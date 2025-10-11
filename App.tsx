@@ -105,6 +105,7 @@ BEGIN RESPONSE.
           <div className="space-y-8 flex flex-col">
             <GeneratedPromptView
               prompt={assembledPrompt}
+              setPrompt={setAssembledPrompt}
               onGenerate={handleGenerate}
               isLoading={isLoading}
             />
