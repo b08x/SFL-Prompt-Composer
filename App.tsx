@@ -3,9 +3,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { PromptComposer } from './components/PromptComposer';
 import { GeneratedPromptView } from './components/GeneratedPromptView';
 import { ResponseDisplay } from './components/ResponseDisplay';
+import { PromptWizardModal } from './components/PromptWizardModal';
 import { generateContent } from './services/geminiService';
 import type { SFLPrompt } from './types';
-import { SFL_ICON } from './constants';
+import { SFL_ICON, WIZARD_ICON } from './constants';
+import { Button } from './components/ui/Button';
 
 const App: React.FC = () => {
   const [promptComponents, setPromptComponents] = useState<SFLPrompt>({
@@ -33,6 +35,7 @@ const App: React.FC = () => {
   const [llmResponse, setLlmResponse] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isWizardOpen, setIsWizardOpen] = useState<boolean>(false);
 
   useEffect(() => {
     const assemble = () => {
@@ -80,44 +83,62 @@ BEGIN RESPONSE.
     }
   }, [assembledPrompt]);
 
-  return (
-    <div className="min-h-screen bg-slate-900 font-sans p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
-        <header className="mb-8 text-center">
-          <div className="inline-flex items-center gap-4">
-            <span className="text-violet-400 w-12 h-12">{SFL_ICON}</span>
-            <div>
-              <h1 className="text-3xl sm:text-4xl font-bold text-slate-100 tracking-tight">
-                SFL Prompt Composer
-              </h1>
-              <p className="text-slate-400 mt-1">
-                Craft effective LLM prompts using Systemic Functional Linguistics.
-              </p>
-            </div>
-          </div>
-        </header>
+  const handleWizardComplete = (newComponents: SFLPrompt) => {
+    setPromptComponents(newComponents);
+    setIsWizardOpen(false);
+  };
 
-        <main className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <PromptComposer
-            promptComponents={promptComponents}
-            setPromptComponents={setPromptComponents}
-          />
-          <div className="space-y-8 flex flex-col">
-            <GeneratedPromptView
-              prompt={assembledPrompt}
-              setPrompt={setAssembledPrompt}
-              onGenerate={handleGenerate}
-              isLoading={isLoading}
+  return (
+    <>
+      <PromptWizardModal
+        isOpen={isWizardOpen}
+        onClose={() => setIsWizardOpen(false)}
+        onComplete={handleWizardComplete}
+      />
+      <div className="min-h-screen bg-slate-900 font-sans p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
+          <header className="mb-8">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div className="inline-flex items-center gap-4">
+                  <span className="text-violet-400 w-12 h-12 flex-shrink-0">{SFL_ICON}</span>
+                  <div>
+                    <h1 className="text-3xl sm:text-4xl font-bold text-slate-100 tracking-tight">
+                      SFL Prompt Composer
+                    </h1>
+                    <p className="text-slate-400 mt-1">
+                      Craft effective LLM prompts using Systemic Functional Linguistics.
+                    </p>
+                  </div>
+                </div>
+                <Button onClick={() => setIsWizardOpen(true)} className="bg-slate-700 hover:bg-slate-600 focus:ring-slate-500 w-full sm:w-auto flex-shrink-0">
+                  <span className="w-5 h-5 mr-2">{WIZARD_ICON}</span>
+                  Prompt Wizard
+                </Button>
+            </div>
+          </header>
+
+          <main className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <PromptComposer
+              promptComponents={promptComponents}
+              setPromptComponents={setPromptComponents}
             />
-            <ResponseDisplay
-              response={llmResponse}
-              isLoading={isLoading}
-              error={error}
-            />
-          </div>
-        </main>
+            <div className="space-y-8 flex flex-col">
+              <GeneratedPromptView
+                prompt={assembledPrompt}
+                setPrompt={setAssembledPrompt}
+                onGenerate={handleGenerate}
+                isLoading={isLoading}
+              />
+              <ResponseDisplay
+                response={llmResponse}
+                isLoading={isLoading}
+                error={error}
+              />
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
