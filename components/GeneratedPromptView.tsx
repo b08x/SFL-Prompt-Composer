@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { SFL_ICON } from '../constants';
+import { SyntaxHighlightedTextarea } from './ui/SyntaxHighlightedTextarea';
 
 interface GeneratedPromptViewProps {
   prompt: string;
@@ -29,12 +29,10 @@ export const GeneratedPromptView: React.FC<GeneratedPromptViewProps> = ({
   return (
     <Card className="flex flex-col flex-grow">
       <h2 className="text-xl font-semibold text-slate-100 mb-4">Assembled Prompt</h2>
-      <div className="flex-grow bg-slate-900/50 rounded-md mb-4 overflow-auto max-h-96">
-        <textarea
-          className="w-full h-full bg-transparent text-sm text-slate-300 whitespace-pre-wrap font-mono resize-none border-none focus:ring-0 p-4 focus:outline-none"
+      <div className="flex-grow mb-4 min-h-[24rem] max-h-96">
+        <SyntaxHighlightedTextarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          rows={15}
           aria-label="Assembled Prompt"
         />
       </div>
