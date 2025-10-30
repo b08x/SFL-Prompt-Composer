@@ -1,6 +1,8 @@
+
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useLiveConversation, TranscriptEntry } from '../hooks/useLiveConversation';
 import { summarizeConversation } from '../services/geminiService';
+import { getGeminiError } from '../utils/errorHandler';
 import { formatResponse } from '../utils/textUtils';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
@@ -42,7 +44,8 @@ export const LiveConversation: React.FC<LiveConversationProps> = ({ systemInstru
       setSummary(result);
       setIsSummaryModalOpen(true);
     } catch (e) {
-      setSummaryError(e instanceof Error ? e.message : 'Failed to generate summary.');
+      console.error("Summarization failed:", e);
+      setSummaryError(getGeminiError(e));
     } finally {
       setIsSummarizing(false);
     }

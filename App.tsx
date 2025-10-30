@@ -6,6 +6,7 @@ import { ResponseDisplay } from './components/ResponseDisplay';
 import { PromptWizardModal } from './components/PromptWizardModal';
 import { HelpModal } from './components/HelpModal';
 import { generateContent } from './services/geminiService';
+import { getGeminiError } from './utils/errorHandler';
 import type { SFLPrompt } from './types';
 import { SFL_ICON, WIZARD_ICON, HELP_ICON } from './constants';
 import { Button } from './components/ui/Button';
@@ -80,7 +81,9 @@ BEGIN RESPONSE.
       const response = await generateContent(assembledPrompt);
       setLlmResponse(response);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'An unknown error occurred.');
+      console.error("Generation failed:", e);
+      const errorMessage = getGeminiError(e);
+      setError(`Failed to generate response: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }

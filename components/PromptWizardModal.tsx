@@ -2,6 +2,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { analyzeTextForSFL } from '../services/geminiService';
 import type { SFLPrompt } from '../types';
+import { getGeminiError } from '../utils/errorHandler';
 import { Button } from './ui/Button';
 import { Label } from './ui/Label';
 import { Textarea } from './ui/Textarea';
@@ -55,7 +56,8 @@ export const PromptWizardModal: React.FC<PromptWizardModalProps> = ({ isOpen, on
       setAnalyzedComponents(result);
       setStep('review');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'An unknown error occurred.');
+      console.error("Analysis failed:", e);
+      setError(getGeminiError(e));
     } finally {
       setIsLoading(false);
     }
