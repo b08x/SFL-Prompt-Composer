@@ -1,13 +1,12 @@
-
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useLiveConversation, TranscriptEntry } from '../hooks/useLiveConversation';
 import { summarizeConversation } from '../services/geminiService';
 import { getGeminiError } from '../utils/errorHandler';
-import { formatResponse } from '../utils/textUtils';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { CONVERSATION_ICON, MIC_ICON, STOP_ICON, USER_AVATAR_ICON, AI_AVATAR_ICON, INFO_ICON, SUMMARY_ICON } from '../constants';
 import type { SFLPrompt } from '../types';
+import { MemoizedMarkdown } from './ui/MemoizedMarkdown';
 
 interface LiveConversationProps {
   systemInstruction: string;
@@ -86,7 +85,9 @@ export const LiveConversation: React.FC<LiveConversationProps> = ({ systemInstru
             onClick={e => e.stopPropagation()}
           >
               <h2 className="text-2xl font-bold text-slate-100 mb-4">Summary of Changes</h2>
-              <div className="max-h-[60vh] overflow-y-auto pr-2 text-slate-300 prose prose-invert prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: formatResponse(summary) }} />
+              <div className="max-h-[60vh] overflow-y-auto pr-2 text-slate-300">
+                <MemoizedMarkdown content={summary} id="summary-modal" />
+              </div>
               <div className="mt-6 pt-6 border-t border-slate-700 flex justify-end">
                 <Button onClick={() => setIsSummaryModalOpen(false)} className="bg-slate-700 hover:bg-slate-600 focus:ring-slate-500">
                   Close
@@ -113,7 +114,7 @@ export const LiveConversation: React.FC<LiveConversationProps> = ({ systemInstru
               {isSummarizing ? (
                 <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8_0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
               ) : (
                 <span className="w-5 h-5 block">{SUMMARY_ICON}</span>

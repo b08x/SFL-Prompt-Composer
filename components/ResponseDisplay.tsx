@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card } from './ui/Card';
-import { formatResponse } from '../utils/textUtils';
+import { MemoizedMarkdown } from './ui/MemoizedMarkdown';
 
 interface ResponseDisplayProps {
   response: string;
@@ -30,7 +30,9 @@ export const ResponseDisplay: React.FC<ResponseDisplayProps> = ({ response, isLo
             <p>{error}</p>
           </div>
         ) : response ? (
-          <div className="text-slate-300 prose prose-invert prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: formatResponse(response) }} />
+          <div className="text-slate-300">
+            <MemoizedMarkdown content={response} id="llm-response" />
+          </div>
         ) : (
           <p className="text-slate-500 italic">Response will appear here...</p>
         )}
