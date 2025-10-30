@@ -1,11 +1,10 @@
-
 import { useState, useRef, useCallback } from 'react';
 import { GoogleGenAI, Modality, LiveSession, FunctionDeclaration, Type } from '@google/genai';
 import { encode, decode, decodeAudioData } from '../utils/audioUtils';
 import type { SFLPrompt } from '../types';
 
 type ConversationStatus = 'idle' | 'connecting' | 'active' | 'error';
-type TranscriptEntry = { speaker: 'user' | 'model' | 'system'; text: string };
+export type TranscriptEntry = { speaker: 'user' | 'model' | 'system'; text: string };
 
 interface UseLiveConversationProps {
   systemInstruction: string;

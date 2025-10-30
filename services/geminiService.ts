@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import type { SFLPrompt } from "../types";
 
@@ -9,6 +8,9 @@ if (!API_KEY) {
 }
 
 const ai = new GoogleGenAI({ apiKey: API_KEY });
+
+// Define a shared type for transcript entries to be used in services and components
+export type TranscriptEntry = { speaker: 'user' | 'model' | 'system'; text: string };
 
 export async function generateContent(prompt: string): Promise<string> {
   try {
@@ -29,6 +31,43 @@ export async function generateContent(prompt: string): Promise<string> {
     return "An unknown error occurred while contacting the Gemini API.";
   }
 }
+
+export async function summarizeConversation(transcript: TranscriptEntry[]): Promise<string> {
+    const formattedTranscript = transcript
+        .map(entry => `${entry.speaker.charAt(0).toUpperCase() + entry.speaker.slice(1)}: ${entry.text}`)
+        .join('\n');
+
+    const prompt = `
+You are a helpful assistant. Below is a transcript of a conversation between a user and an AI aimed at refining a prompt using a Systemic Functional Linguistics (SFL) framework.
+Your task is to provide a concise summary of the key decisions and adjustments made to the prompt's Field, Tenor, and Mode components throughout the conversation.
+Ignore conversational filler and focus only on the changes that were requested and applied.
+
+CONVERSATION TRANSCRIPT:
+---
+${formattedTranscript}
+---
+
+Provide the summary as a well-formatted, bulleted list under the heading "Prompt Adjustments Summary".
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                temperature: 0.2, // Lower temperature for more factual summary
+            },
+        });
+        return response.text;
+    } catch (error) {
+        console.error("Error summarizing conversation:", error);
+        if (error instanceof Error) {
+            throw new Error(`Error from Gemini API during summarization: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while summarizing the conversation.");
+    }
+}
+
 
 export async function analyzeTextForSFL(text: string): Promise<SFLPrompt> {
     try {
