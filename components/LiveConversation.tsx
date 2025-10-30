@@ -137,11 +137,11 @@ export const LiveConversation: React.FC<LiveConversationProps> = ({ systemInstru
               
               const isUser = entry.speaker === 'user';
               return (
-                  <div key={index} className={`flex items-end gap-3 w-full ${!isUser ? 'flex-row' : 'flex-row-reverse'}`}>
+                  <div key={index} className={`flex items-end gap-3 w-full ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
                       <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center p-1 ${isUser ? 'bg-slate-600 text-slate-300' : 'bg-violet-500 text-violet-100'}`}>
-                          {isUser ? AI_AVATAR_ICON : USER_AVATAR_ICON}
+                          {isUser ? USER_AVATAR_ICON : AI_AVATAR_ICON}
                       </div>
-                      <div className={`text-slate-200 rounded-xl px-4 py-2 max-w-[80%] break-words ${isUser ? 'bg-violet-600/80 rounded-br-none text-right' : 'bg-slate-700 rounded-bl-none text-left'}`}>
+                      <div className={`text-slate-200 rounded-xl px-4 py-2 max-w-[80%] break-words ${isUser ? 'bg-slate-700 rounded-br-none' : 'bg-violet-600/80 rounded-bl-none'}`}>
                           {entry.text}
                       </div>
                   </div>
