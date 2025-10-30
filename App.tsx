@@ -8,6 +8,7 @@ import { generateContent } from './services/geminiService';
 import type { SFLPrompt } from './types';
 import { SFL_ICON, WIZARD_ICON } from './constants';
 import { Button } from './components/ui/Button';
+import { LiveConversation } from './components/LiveConversation';
 
 const App: React.FC = () => {
   const [promptComponents, setPromptComponents] = useState<SFLPrompt>({
@@ -134,6 +135,11 @@ BEGIN RESPONSE.
                 isLoading={isLoading}
                 error={error}
               />
+              {llmResponse && !isLoading && !error && (
+                <LiveConversation
+                  systemInstruction={`You are a helpful AI assistant. The user has just generated a response based on a detailed SFL prompt. Your goal is to help them refine either the original prompt or the generated response through a voice conversation. Be concise and proactive. The user's original assembled prompt was:\n\n---\nPROMPT:\n${assembledPrompt}\n---\n\nThe response you generated was:\n\n---\nRESPONSE:\n${llmResponse}\n---\n\nStart by greeting the user and asking how you can help them refine their work.`}
+                />
+              )}
             </div>
           </main>
         </div>

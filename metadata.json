@@ -1,5 +1,7 @@
 {
   "name": "SFL Prompt Composer",
   "description": "A generative UI based on Systemic Functional Linguistics (SFL) to help users craft highly effective prompts for Large Language Models. This tool guides prompt construction by focusing on SFL's core concepts: Field (the topic), Tenor (the relationship and tone), and Mode (the output structure).",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }

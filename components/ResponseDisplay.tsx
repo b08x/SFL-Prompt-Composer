@@ -17,6 +17,29 @@ const LoadingSkeleton: React.FC = () => (
     </div>
 );
 
+const formatResponse = (text: string) => {
+  if (!text) return '';
+  // A simple markdown-like formatter for paragraphs and lists
+  return text
+    .split('\n\n')
+    .map((paragraph, pIndex) => {
+      const lines = paragraph.split('\n');
+      // Check if the paragraph is a list
+      const isList = lines.every(line => line.trim().startsWith('* ') || line.trim().startsWith('- ') || /^\d+\.\s/.test(line.trim()));
+      if (isList && lines.length > 0) {
+        const listItems = lines.map((item, lIndex) => {
+          const content = item.trim().replace(/^(\* | - |\d+\.\s)/, '');
+          return `<li key=${lIndex}>${content}</li>`;
+        }).join('');
+        const isOrdered = /^\d+\.\s/.test(lines[0].trim());
+        return isOrdered ? `<ol class="list-decimal list-inside">${listItems}</ol>` : `<ul class="list-disc list-inside">${listItems}</ul>`;
+      }
+      // Otherwise, treat as a paragraph
+      return `<p key=${pIndex}>${paragraph.replace(/\n/g, '<br />')}</p>`;
+    })
+    .join('');
+};
+
 
 export const ResponseDisplay: React.FC<ResponseDisplayProps> = ({ response, isLoading, error }) => {
   return (
@@ -31,7 +54,7 @@ export const ResponseDisplay: React.FC<ResponseDisplayProps> = ({ response, isLo
             <p>{error}</p>
           </div>
         ) : response ? (
-          <div className="text-slate-300 whitespace-pre-wrap prose prose-invert prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: response.replace(/\n/g, '<br />') }} />
+          <div className="text-slate-300 whitespace-pre-wrap prose prose-invert prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: formatResponse(response) }} />
         ) : (
           <p className="text-slate-500 italic">Response will appear here...</p>
         )}
