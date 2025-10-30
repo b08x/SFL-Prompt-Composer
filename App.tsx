@@ -88,6 +88,14 @@ BEGIN RESPONSE.
     setPromptComponents(newComponents);
     setIsWizardOpen(false);
   };
+  
+  const handlePromptUpdateFromConversation = useCallback((updates: Partial<SFLPrompt>) => {
+    setPromptComponents(prev => ({
+        field: { ...prev.field, ...updates.field },
+        tenor: { ...prev.tenor, ...updates.tenor },
+        mode: { ...prev.mode, ...updates.mode },
+    }));
+  }, []);
 
   return (
     <>
@@ -137,7 +145,8 @@ BEGIN RESPONSE.
               />
               {llmResponse && !isLoading && !error && (
                 <LiveConversation
-                  systemInstruction={`You are a helpful AI assistant. The user has just generated a response based on a detailed SFL prompt. Your goal is to help them refine either the original prompt or the generated response through a voice conversation. Be concise and proactive. The user's original assembled prompt was:\n\n---\nPROMPT:\n${assembledPrompt}\n---\n\nThe response you generated was:\n\n---\nRESPONSE:\n${llmResponse}\n---\n\nStart by greeting the user and asking how you can help them refine their work.`}
+                  onUpdatePrompt={handlePromptUpdateFromConversation}
+                  systemInstruction={`You are a helpful AI assistant. The user wants to refine a prompt or its response. Your primary tool is 'updatePromptComponents'. Listen for instructions to change the prompt's topic, persona, tone, format, etc., and use the tool to apply these changes in real-time. Do not ask for confirmation before using the tool. After a successful update, briefly confirm what you've changed. The user's original assembled prompt was:\n\n---\nPROMPT:\n${assembledPrompt}\n---\n\nThe response you generated was:\n\n---\nRESPONSE:\n${llmResponse}\n---\n\nStart by greeting the user and asking how you can help them refine their work.`}
                 />
               )}
             </div>

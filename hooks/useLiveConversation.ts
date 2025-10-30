@@ -1,16 +1,58 @@
 
 import { useState, useRef, useCallback } from 'react';
-import { GoogleGenAI, Modality, LiveSession } from '@google/genai';
+import { GoogleGenAI, Modality, LiveSession, FunctionDeclaration, Type } from '@google/genai';
 import { encode, decode, decodeAudioData } from '../utils/audioUtils';
+import type { SFLPrompt } from '../types';
 
 type ConversationStatus = 'idle' | 'connecting' | 'active' | 'error';
-type TranscriptEntry = { speaker: 'user' | 'model'; text: string };
+type TranscriptEntry = { speaker: 'user' | 'model' | 'system'; text: string };
 
 interface UseLiveConversationProps {
   systemInstruction: string;
+  onUpdatePrompt: (updates: Partial<SFLPrompt>) => void;
 }
 
-export const useLiveConversation = ({ systemInstruction }: UseLiveConversationProps) => {
+const updatePromptComponentsFunctionDeclaration: FunctionDeclaration = {
+    name: 'updatePromptComponents',
+    description: "Updates one or more components of the SFL prompt (Field, Tenor, or Mode). Only include fields that need changing.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        field: {
+          type: Type.OBJECT,
+          description: "Updates to the 'Field' component (the subject matter).",
+          properties: {
+            topic: { type: Type.STRING },
+            taskVerb: { type: Type.STRING },
+            taskDescription: { type: Type.STRING },
+            keyEntities: { type: Type.STRING },
+            circumstances: { type: Type.STRING },
+          },
+        },
+        tenor: {
+          type: Type.OBJECT,
+          description: "Updates to the 'Tenor' component (persona and audience).",
+          properties: {
+            persona: { type: Type.STRING },
+            audience: { type: Type.STRING },
+            tone: { type: Type.STRING },
+            modality: { type: Type.STRING },
+          },
+        },
+        mode: {
+          type: Type.OBJECT,
+          description: "Updates to the 'Mode' component (output format and structure).",
+          properties: {
+            format: { type: Type.STRING },
+            structure: { type: Type.STRING },
+            constraints: { type: Type.STRING },
+          },
+        },
+      },
+    },
+};
+
+export const useLiveConversation = ({ systemInstruction, onUpdatePrompt }: UseLiveConversationProps) => {
   const [status, setStatus] = useState<ConversationStatus>('idle');
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +68,6 @@ export const useLiveConversation = ({ systemInstruction }: UseLiveConversationPr
   const audioSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
 
   const cleanup = useCallback(() => {
-    // Stop audio processing
     if (scriptProcessorRef.current) {
         scriptProcessorRef.current.onaudioprocess = null;
         scriptProcessorRef.current.disconnect();
@@ -40,20 +81,15 @@ export const useLiveConversation = ({ systemInstruction }: UseLiveConversationPr
         mediaStreamRef.current.getTracks().forEach(track => track.stop());
         mediaStreamRef.current = null;
     }
-
-    // Close audio contexts
     if (inputAudioContextRef.current && inputAudioContextRef.current.state !== 'closed') {
         inputAudioContextRef.current.close();
     }
     if (outputAudioContextRef.current && outputAudioContextRef.current.state !== 'closed') {
         outputAudioContextRef.current.close();
     }
-    
-    // Stop any playing audio
     audioSourcesRef.current.forEach(source => source.stop());
     audioSourcesRef.current.clear();
     nextStartTimeRef.current = 0;
-
   }, []);
 
 
@@ -77,8 +113,6 @@ export const useLiveConversation = ({ systemInstruction }: UseLiveConversationPr
 
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-        // FIX: Cast window to `any` to support `webkitAudioContext` for older Safari browsers
-        // without causing TypeScript compilation errors.
         inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
         outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
 
@@ -89,14 +123,10 @@ export const useLiveConversation = ({ systemInstruction }: UseLiveConversationPr
                     setStatus('active');
                     const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
                     mediaStreamSourceRef.current = source;
-
                     const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(4096, 1, 1);
                     scriptProcessorRef.current = scriptProcessor;
-                    
                     scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
                         const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
-                        // FIX: Replaced .map with a for loop for audio data conversion
-                        // to improve performance and reduce memory allocation, aligning with best practices for real-time audio processing.
                         const l = inputData.length;
                         const int16 = new Int16Array(l);
                         for (let i = 0; i < l; i++) {
@@ -114,15 +144,34 @@ export const useLiveConversation = ({ systemInstruction }: UseLiveConversationPr
                     scriptProcessor.connect(inputAudioContextRef.current!.destination);
                 },
                 onmessage: async (message) => {
-                    // Handle transcription
-                    // FIX: Simplified transcription logic to update the last message from the same speaker,
-                    // preventing duplicate entries and creating a smoother streaming experience.
+                    if (message.toolCall) {
+                        const functionResponses = [];
+                        for (const fc of message.toolCall.functionCalls) {
+                            if (fc.name === 'updatePromptComponents') {
+                                onUpdatePrompt(fc.args as Partial<SFLPrompt>);
+                                const updatedSections = Object.keys(fc.args).join(', ');
+                                setTranscript(prev => [...prev, { speaker: 'system', text: `Updated ${updatedSections}` }]);
+                                
+                                functionResponses.push({
+                                    id : fc.id,
+                                    name: fc.name,
+                                    response: { result: "OK, the prompt has been updated." },
+                                });
+                            }
+                        }
+                        if (functionResponses.length > 0) {
+                            sessionPromise.then((session) => {
+                                session.sendToolResponse({ functionResponses });
+                            });
+                        }
+                    }
+
                     if (message.serverContent?.inputTranscription) {
                         const text = message.serverContent.inputTranscription.text;
                         setTranscript(prev => {
-                            const last = prev[prev.length - 1];
+                            const last = prev.length > 0 ? prev[prev.length - 1] : null;
                             if (last?.speaker === 'user') {
-                                const updatedLast = { ...last, text };
+                                const updatedLast = { ...last, text: last.text + text };
                                 return [...prev.slice(0, -1), updatedLast];
                             }
                             return [...prev, { speaker: 'user', text }];
@@ -130,16 +179,15 @@ export const useLiveConversation = ({ systemInstruction }: UseLiveConversationPr
                     } else if (message.serverContent?.outputTranscription) {
                         const text = message.serverContent.outputTranscription.text;
                         setTranscript(prev => {
-                            const last = prev[prev.length - 1];
+                            const last = prev.length > 0 ? prev[prev.length - 1] : null;
                             if (last?.speaker === 'model') {
-                                const updatedLast = { ...last, text };
+                                const updatedLast = { ...last, text: last.text + text };
                                 return [...prev.slice(0, -1), updatedLast];
                             }
                             return [...prev, { speaker: 'model', text }];
                         });
                     }
 
-                    // Handle audio playback
                     const base64Audio = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
                     if (base64Audio) {
                         const outputContext = outputAudioContextRef.current!;
@@ -181,6 +229,7 @@ export const useLiveConversation = ({ systemInstruction }: UseLiveConversationPr
                 inputAudioTranscription: {},
                 outputAudioTranscription: {},
                 systemInstruction,
+                tools: [{ functionDeclarations: [updatePromptComponentsFunctionDeclaration] }],
             },
         });
         
@@ -192,7 +241,7 @@ export const useLiveConversation = ({ systemInstruction }: UseLiveConversationPr
         setStatus('error');
         cleanup();
     }
-  }, [systemInstruction, cleanup]);
+  }, [systemInstruction, cleanup, onUpdatePrompt]);
 
   return { status, transcript, error, startConversation, endConversation };
 };

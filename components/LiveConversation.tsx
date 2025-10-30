@@ -4,19 +4,22 @@ import { useLiveConversation } from '../hooks/useLiveConversation';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { CONVERSATION_ICON, MIC_ICON, STOP_ICON } from '../constants';
+import type { SFLPrompt } from '../types';
+
 
 interface LiveConversationProps {
   systemInstruction: string;
+  onUpdatePrompt: (updates: Partial<SFLPrompt>) => void;
 }
 
-export const LiveConversation: React.FC<LiveConversationProps> = ({ systemInstruction }) => {
+export const LiveConversation: React.FC<LiveConversationProps> = ({ systemInstruction, onUpdatePrompt }) => {
   const {
     status,
     transcript,
     error,
     startConversation,
     endConversation,
-  } = useLiveConversation({ systemInstruction });
+  } = useLiveConversation({ systemInstruction, onUpdatePrompt });
 
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
@@ -62,12 +65,22 @@ export const LiveConversation: React.FC<LiveConversationProps> = ({ systemInstru
             </p>
         )}
         {transcript.map((entry, index) => (
-          <div key={index} className={`flex flex-col ${entry.speaker === 'user' ? 'items-start' : 'items-end'}`}>
-            <div className={`rounded-lg px-3 py-2 max-w-[80%] ${entry.speaker === 'user' ? 'bg-slate-700 text-slate-200' : 'bg-violet-800 text-violet-100'}`}>
-              <span className="font-bold text-xs block mb-1 opacity-70">{entry.speaker === 'user' ? 'You' : 'AI'}</span>
-              {entry.text}
-            </div>
-          </div>
+            <React.Fragment key={index}>
+                {entry.speaker === 'system' ? (
+                     <div className="text-center w-full my-1">
+                        <span className="text-xs italic text-slate-400 bg-slate-800/60 px-2 py-1 rounded-full">
+                            {entry.text}
+                        </span>
+                    </div>
+                ) : (
+                    <div className={`flex flex-col ${entry.speaker === 'user' ? 'items-start' : 'items-end'}`}>
+                        <div className={`rounded-lg px-3 py-2 max-w-[80%] ${entry.speaker === 'user' ? 'bg-slate-700 text-slate-200' : 'bg-violet-800 text-violet-100'}`}>
+                        <span className="font-bold text-xs block mb-1 opacity-70">{entry.speaker === 'user' ? 'You' : 'AI'}</span>
+                        {entry.text}
+                        </div>
+                    </div>
+                )}
+            </React.Fragment>
         ))}
         <div ref={transcriptEndRef} />
       </div>
