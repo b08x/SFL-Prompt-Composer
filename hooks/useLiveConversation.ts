@@ -1,10 +1,10 @@
 import { useState, useRef, useCallback } from 'react';
 import { GoogleGenAI, Modality, LiveSession, FunctionDeclaration, Type } from '@google/genai';
 import { encode, decode, decodeAudioData } from '../utils/audioUtils';
-import type { SFLPrompt } from '../types';
+// Fix: Import TranscriptEntry from the shared types file.
+import type { SFLPrompt, TranscriptEntry } from '../types';
 
 type ConversationStatus = 'idle' | 'connecting' | 'active' | 'error';
-export type TranscriptEntry = { speaker: 'user' | 'model' | 'system'; text: string };
 
 interface UseLiveConversationProps {
   systemInstruction: string;

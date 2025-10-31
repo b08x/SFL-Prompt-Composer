@@ -10,6 +10,7 @@ export interface Field {
 export interface Tenor {
   persona: string;
   audience: string;
+
   tone: string;
   modality: string;
 }
@@ -25,3 +26,31 @@ export interface SFLPrompt {
   tenor: Tenor;
   mode: Mode;
 }
+
+export type Severity = 'error' | 'warning' | 'info';
+export type GrammarAspect = 'Functional' | 'Generative' | 'Pragmatic';
+export type SFLComponent = 'Field' | 'Tenor' | 'Mode' | 'Cross-Component';
+
+export interface ValidationIssue {
+  id: string;
+  component: SFLComponent;
+  field?: string;
+  severity: Severity;
+  grammar: GrammarAspect;
+  message: string;
+  suggestion: string;
+}
+
+export interface ValidationResult {
+  score: number;
+  assessment: string;
+  issues: ValidationIssue[];
+}
+
+export interface GenerateContentResult {
+  text: string;
+  sources: { uri: string; title: string }[];
+}
+
+// Fix: Moved TranscriptEntry here from useLiveConversation.ts to be shared across the app.
+export type TranscriptEntry = { speaker: 'user' | 'model' | 'system'; text: string };

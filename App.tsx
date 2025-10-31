@@ -11,6 +11,13 @@ import type { SFLPrompt } from './types';
 import { SFL_ICON, WIZARD_ICON, HELP_ICON } from './constants';
 import { Button } from './components/ui/Button';
 import { LiveConversation } from './components/LiveConversation';
+import { ValidationPane } from './components/ValidationPane';
+import { usePromptValidator } from './hooks/usePromptValidator';
+
+interface LlmResponse {
+  text: string;
+  sources: { uri: string; title: string }[];
+}
 
 const App: React.FC = () => {
   const [promptComponents, setPromptComponents] = useState<SFLPrompt>({
@@ -35,11 +42,14 @@ const App: React.FC = () => {
   });
 
   const [assembledPrompt, setAssembledPrompt] = useState<string>('');
-  const [llmResponse, setLlmResponse] = useState<string>('');
+  const [llmResponse, setLlmResponse] = useState<LlmResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isWizardOpen, setIsWizardOpen] = useState<boolean>(false);
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
+
+  const { validationResult, isLoading: isValidating } = usePromptValidator(promptComponents);
+
 
   useEffect(() => {
     const assemble = () => {
@@ -76,7 +86,7 @@ BEGIN RESPONSE.
   const handleGenerate = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    setLlmResponse('');
+    setLlmResponse(null);
     try {
       const response = await generateContent(assembledPrompt);
       setLlmResponse(response);
@@ -155,11 +165,12 @@ BEGIN RESPONSE.
                 error={error}
               />
             </div>
-            <div className="lg:col-span-2 xl:col-span-1">
+            <div className="lg:col-span-2 xl:col-span-1 space-y-8">
+              <ValidationPane validationResult={validationResult} isLoading={isValidating} />
               {llmResponse && !isLoading && !error && (
                 <LiveConversation
                   onUpdatePrompt={handlePromptUpdateFromConversation}
-                  systemInstruction={`You are a helpful AI assistant. The user wants to refine a prompt or its response. Your primary tool is 'updatePromptComponents'. Listen for instructions to change the prompt's topic, persona, tone, format, etc., and use the tool to apply these changes in real-time. Do not ask for confirmation before using the tool. After a successful update, briefly confirm what you've changed. The user's original assembled prompt was:\n\n---\nPROMPT:\n${assembledPrompt}\n---\n\nThe response you generated was:\n\n---\nRESPONSE:\n${llmResponse}\n---\n\nStart by greeting the user and asking how you can help them refine their work.`}
+                  systemInstruction={`You are a helpful AI assistant. The user wants to refine a prompt or its response. Your primary tool is 'updatePromptComponents'. Listen for instructions to change the prompt's topic, persona, tone, format, etc., and use the tool to apply these changes in real-time. Do not ask for confirmation before using the tool. After a successful update, briefly confirm what you've changed. The user's original assembled prompt was:\n\n---\nPROMPT:\n${assembledPrompt}\n---\n\nThe response you generated was:\n\n---\nRESPONSE:\n${llmResponse.text}\n---\n\nStart by greeting the user and asking how you can help them refine their work.`}
                 />
               )}
             </div>

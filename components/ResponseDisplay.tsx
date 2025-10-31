@@ -1,9 +1,11 @@
+
 import React from 'react';
 import { Card } from './ui/Card';
 import { MemoizedMarkdown } from './ui/MemoizedMarkdown';
+import type { GenerateContentResult } from '../types';
 
 interface ResponseDisplayProps {
-  response: string;
+  response: GenerateContentResult | null;
   isLoading: boolean;
   error: string | null;
 }
@@ -30,8 +32,31 @@ export const ResponseDisplay: React.FC<ResponseDisplayProps> = ({ response, isLo
             <p>{error}</p>
           </div>
         ) : response ? (
-          <div className="text-slate-300">
-            <MemoizedMarkdown content={response} id="llm-response" />
+          <div>
+            <div className="text-slate-300 prose prose-invert prose-sm max-w-none">
+              <MemoizedMarkdown content={response.text} id="llm-response" />
+            </div>
+            {response.sources && response.sources.length > 0 && (
+              <div className="mt-6 pt-4 border-t border-slate-700">
+                <h4 className="text-sm font-semibold text-slate-400 mb-2">Sources</h4>
+                <ul className="space-y-2">
+                  {response.sources.map((source, index) => (
+                    <li key={index} className="text-xs">
+                      <a 
+                        href={source.uri} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="text-violet-400 hover:text-violet-300 hover:underline flex items-start gap-2"
+                        title={source.uri}
+                      >
+                         <span className="flex-shrink-0 bg-slate-700 rounded-full w-4 h-4 text-center leading-4 text-slate-400 text-[10px]">{index + 1}</span>
+                         <span className="truncate flex-grow">{source.title}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-slate-500 italic">Response will appear here...</p>
