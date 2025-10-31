@@ -8,7 +8,7 @@ import { HelpModal } from './components/HelpModal';
 import { generateContent } from './services/geminiService';
 import { getGeminiError } from './utils/errorHandler';
 import type { SFLPrompt } from './types';
-import { SFL_ICON, WIZARD_ICON, HELP_ICON } from './constants';
+import { SFL_ICON, WIZARD_ICON, HELP_ICON, CONVERSATION_ICON } from './constants';
 import { Button } from './components/ui/Button';
 import { LiveConversation } from './components/LiveConversation';
 import { ValidationPane } from './components/ValidationPane';
@@ -47,8 +47,33 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isWizardOpen, setIsWizardOpen] = useState<boolean>(false);
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
+  const [generationId, setGenerationId] = useState(0);
+  const [isApiKeyReady, setIsApiKeyReady] = useState(false);
 
   const { validationResult, isLoading: isValidating } = usePromptValidator(promptComponents);
+
+  useEffect(() => {
+    const checkApiKey = async () => {
+      // In a real AI Studio environment, window.aistudio would be available.
+      // We check for its existence for robust development outside that environment.
+      if ((window as any).aistudio && await (window as any).aistudio.hasSelectedApiKey()) {
+        setIsApiKeyReady(true);
+      }
+    };
+    checkApiKey();
+  }, []);
+
+  const handleSelectKey = async () => {
+    if ((window as any).aistudio) {
+      await (window as any).aistudio.openSelectKey();
+      // Optimistically assume the user selected a key to avoid race conditions
+      setIsApiKeyReady(true);
+    }
+  };
+
+  const handleApiKeyError = useCallback(() => {
+    setIsApiKeyReady(false);
+  }, []);
 
 
   useEffect(() => {
@@ -86,10 +111,10 @@ BEGIN RESPONSE.
   const handleGenerate = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    setLlmResponse(null);
     try {
       const response = await generateContent(assembledPrompt);
       setLlmResponse(response);
+      setGenerationId(id => id + 1);
     } catch (e) {
       console.error("Generation failed:", e);
       const errorMessage = getGeminiError(e);
@@ -111,6 +136,29 @@ BEGIN RESPONSE.
         mode: { ...prev.mode, ...updates.mode },
     }));
   }, []);
+  
+  if (!isApiKeyReady && (window as any).aistudio) {
+    return (
+      <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-lg text-center">
+          <div className="mx-auto w-12 h-12 text-violet-400 mb-4">{CONVERSATION_ICON}</div>
+          <h2 className="text-2xl font-bold text-slate-100 mb-2">API Key Required</h2>
+          <p className="text-slate-400 mb-6">
+            The real-time "Converse & Refine" feature requires selecting an API key from a project with billing enabled.
+          </p>
+          <Button onClick={handleSelectKey} className="w-full">
+            Select API Key & Enable Feature
+          </Button>
+          <p className="text-xs text-slate-500 mt-4">
+            For more information on billing, visit{' '}
+            <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:underline">
+              ai.google.dev/gemini-api/docs/billing
+            </a>.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -167,10 +215,12 @@ BEGIN RESPONSE.
             </div>
             <div className="lg:col-span-2 xl:col-span-1 space-y-8">
               <ValidationPane validationResult={validationResult} isLoading={isValidating} />
-              {llmResponse && !isLoading && !error && (
+              {llmResponse && !error && (
                 <LiveConversation
+                  key={generationId}
                   onUpdatePrompt={handlePromptUpdateFromConversation}
-                  systemInstruction={`You are a helpful AI assistant. The user wants to refine a prompt or its response. Your primary tool is 'updatePromptComponents'. Listen for instructions to change the prompt's topic, persona, tone, format, etc., and use the tool to apply these changes in real-time. Do not ask for confirmation before using the tool. After a successful update, briefly confirm what you've changed. The user's original assembled prompt was:\n\n---\nPROMPT:\n${assembledPrompt}\n---\n\nThe response you generated was:\n\n---\nRESPONSE:\n${llmResponse.text}\n---\n\nStart by greeting the user and asking how you can help them refine their work.`}
+                  onApiKeyError={handleApiKeyError}
+                  systemInstruction={`You are a helpful AI assistant. The user wants to refine a prompt or its response. Your primary tool is 'updatePromptComponents'. Listen for instructions to change the prompt's topic, persona, tone, format, etc., and use the tool to apply these changes in real-time. Do not ask for confirmation before using the tool. After a successful update, briefly confirm what you've changed. The user's original assembled prompt was:\n\n---\nPROMPT:\n${assembledPrompt}\n---\n\nThe response you generated was:\n\n---\nRESPONSE:\n${llmResponse.text}\n---\n\nYou have just generated the response above. Start the conversation by providing a brief, high-level summary of what you've generated and how it addresses the user's prompt. Then, ask for feedback or how you can refine it further.`}
                 />
               )}
             </div>

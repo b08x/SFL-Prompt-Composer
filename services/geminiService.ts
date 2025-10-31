@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import type { SFLPrompt, ValidationResult, TranscriptEntry, GenerateContentResult } from "../types";
 
@@ -26,9 +25,10 @@ export async function generateContent(prompt: string): Promise<GenerateContentRe
     .filter((web): web is { uri: string; title: string } => !!(web && web.uri && web.title))
     .map(web => ({ uri: web.uri, title: web.title }));
 
-  // Deduplicate sources based on URI
-  // Fix: Explicitly type uniqueSources to prevent it from being inferred as unknown[].
-  const uniqueSources: { uri: string; title: string; }[] = Array.from(new Map(sources.map(item => [item['uri'], item])).values());
+  // Fix: Deduplicate sources based on URI using a method with more robust type inference.
+  const uniqueSources: { uri: string; title: string }[] = Object.values(
+    Object.fromEntries(sources.map(item => [item.uri, item]))
+  );
 
   return {
     text: response.text,

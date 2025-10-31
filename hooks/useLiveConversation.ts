@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback } from 'react';
 import { GoogleGenAI, Modality, LiveSession, FunctionDeclaration, Type } from '@google/genai';
 import { encode, decode, decodeAudioData } from '../utils/audioUtils';
@@ -9,6 +10,7 @@ type ConversationStatus = 'idle' | 'connecting' | 'active' | 'error';
 interface UseLiveConversationProps {
   systemInstruction: string;
   onUpdatePrompt: (updates: Partial<SFLPrompt>) => void;
+  onApiKeyError: () => void;
 }
 
 const updatePromptComponentsFunctionDeclaration: FunctionDeclaration = {
@@ -51,7 +53,7 @@ const updatePromptComponentsFunctionDeclaration: FunctionDeclaration = {
     },
 };
 
-export const useLiveConversation = ({ systemInstruction, onUpdatePrompt }: UseLiveConversationProps) => {
+export const useLiveConversation = ({ systemInstruction, onUpdatePrompt, onApiKeyError }: UseLiveConversationProps) => {
   const [status, setStatus] = useState<ConversationStatus>('idle');
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -212,9 +214,15 @@ export const useLiveConversation = ({ systemInstruction, onUpdatePrompt }: UseLi
                         nextStartTimeRef.current = 0;
                     }
                 },
-                onerror: (e) => {
+                onerror: (e: any) => {
                     console.error('Live session error:', e);
-                    setError('A connection error occurred.');
+                    const errorMessage = e?.message || '';
+                    if (errorMessage.includes('Network error') || errorMessage.includes('Requested entity was not found')) {
+                        setError('Connection failed. This may be due to an invalid API key. Please re-select your key.');
+                        onApiKeyError();
+                    } else {
+                        setError('A connection error occurred.');
+                    }
                     setStatus('error');
                     cleanup();
                 },
@@ -240,7 +248,7 @@ export const useLiveConversation = ({ systemInstruction, onUpdatePrompt }: UseLi
         setStatus('error');
         cleanup();
     }
-  }, [systemInstruction, cleanup, onUpdatePrompt]);
+  }, [systemInstruction, cleanup, onUpdatePrompt, onApiKeyError]);
 
   return { status, transcript, error, startConversation, endConversation };
 };
