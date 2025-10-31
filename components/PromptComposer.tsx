@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import type { SFLPrompt } from '../types';
 import { Card } from './ui/Card';
 import { Label } from './ui/Label';
@@ -8,6 +8,7 @@ import { Textarea } from './ui/Textarea';
 import { Select } from './ui/Select';
 import { Tooltip } from './ui/Tooltip';
 import { FIELD_ICON, TENOR_ICON, MODE_ICON, TASK_VERBS } from '../constants';
+import { useSpeechToText } from '../hooks/useSpeechToText';
 
 interface PromptComposerProps {
   promptComponents: SFLPrompt;
@@ -18,6 +19,46 @@ export const PromptComposer: React.FC<PromptComposerProps> = ({
   promptComponents,
   setPromptComponents,
 }) => {
+  const [speechTarget, setSpeechTarget] = useState<{ category: keyof SFLPrompt; field: string } | null>(null);
+
+  const handleTranscriptUpdate = useCallback((transcript: string) => {
+    if (speechTarget) {
+      setPromptComponents(prev => {
+        const { category, field } = speechTarget;
+        const currentCategory = prev[category];
+        const currentValue = (currentCategory as any)[field] || '';
+        
+        return {
+          ...prev,
+          [category]: {
+            ...currentCategory,
+            [field]: (currentValue ? currentValue + ' ' : '') + transcript,
+          },
+        };
+      });
+    }
+  }, [speechTarget, setPromptComponents]);
+
+  const { isListening, startListening, stopListening, isSupported } = useSpeechToText(handleTranscriptUpdate);
+
+  const handleSpeechClick = (category: keyof SFLPrompt, field: string) => {
+    if (isListening && speechTarget?.category === category && speechTarget?.field === field) {
+      stopListening();
+      setSpeechTarget(null);
+    } else {
+      if (isListening) {
+        stopListening();
+      }
+      setSpeechTarget({ category, field });
+      startListening();
+    }
+  };
+
+  const isFieldListening = (category: keyof SFLPrompt, field: string) => {
+    return isListening && speechTarget?.category === category && speechTarget?.field === field;
+  };
+
+
   const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setPromptComponents(prev => ({ ...prev, field: { ...prev.field, [e.target.name]: e.target.value } }));
   };
@@ -38,7 +79,12 @@ export const PromptComposer: React.FC<PromptComposerProps> = ({
         <div className="space-y-4">
           <div>
             <Label htmlFor="topic">Topic / Subject Matter</Label>
-            <Input id="topic" name="topic" value={promptComponents.field.topic} onChange={handleFieldChange} placeholder="e.g., Quantum Computing" />
+            <Input id="topic" name="topic" value={promptComponents.field.topic} onChange={handleFieldChange} placeholder="e.g., Quantum Computing" 
+              showSpeechButton={isSupported}
+              isListening={isFieldListening('field', 'topic')}
+              onSpeechClick={() => handleSpeechClick('field', 'topic')}
+              isSpeechSupported={isSupported}
+            />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-1">
@@ -49,16 +95,31 @@ export const PromptComposer: React.FC<PromptComposerProps> = ({
             </div>
             <div className="sm:col-span-2">
               <Label htmlFor="taskDescription">Task Description</Label>
-              <Input id="taskDescription" name="taskDescription" value={promptComponents.field.taskDescription} onChange={handleFieldChange} placeholder="e.g., the core principles for a beginner" />
+              <Input id="taskDescription" name="taskDescription" value={promptComponents.field.taskDescription} onChange={handleFieldChange} placeholder="e.g., the core principles for a beginner" 
+                showSpeechButton={isSupported}
+                isListening={isFieldListening('field', 'taskDescription')}
+                onSpeechClick={() => handleSpeechClick('field', 'taskDescription')}
+                isSpeechSupported={isSupported}
+              />
             </div>
           </div>
           <div>
             <Label htmlFor="keyEntities">Key Entities</Label>
-            <Textarea id="keyEntities" name="keyEntities" value={promptComponents.field.keyEntities} onChange={handleFieldChange} rows={2} placeholder="e.g., Superposition, Entanglement, Qubits" />
+            <Textarea id="keyEntities" name="keyEntities" value={promptComponents.field.keyEntities} onChange={handleFieldChange} rows={2} placeholder="e.g., Superposition, Entanglement, Qubits"
+              showSpeechButton={isSupported}
+              isListening={isFieldListening('field', 'keyEntities')}
+              onSpeechClick={() => handleSpeechClick('field', 'keyEntities')}
+              isSpeechSupported={isSupported}
+            />
           </div>
           <div>
             <Label htmlFor="circumstances">Circumstances / Scope</Label>
-            <Input id="circumstances" name="circumstances" value={promptComponents.field.circumstances} onChange={handleFieldChange} placeholder="e.g., Focus on applications in cryptography" />
+            <Input id="circumstances" name="circumstances" value={promptComponents.field.circumstances} onChange={handleFieldChange} placeholder="e.g., Focus on applications in cryptography" 
+              showSpeechButton={isSupported}
+              isListening={isFieldListening('field', 'circumstances')}
+              onSpeechClick={() => handleSpeechClick('field', 'circumstances')}
+              isSpeechSupported={isSupported}
+            />
           </div>
         </div>
       </SectionCard>
@@ -72,20 +133,40 @@ export const PromptComposer: React.FC<PromptComposerProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="persona">LLM Persona</Label>
-              <Input id="persona" name="persona" value={promptComponents.tenor.persona} onChange={handleTenorChange} placeholder="e.g., A university professor" />
+              <Input id="persona" name="persona" value={promptComponents.tenor.persona} onChange={handleTenorChange} placeholder="e.g., A university professor"
+                showSpeechButton={isSupported}
+                isListening={isFieldListening('tenor', 'persona')}
+                onSpeechClick={() => handleSpeechClick('tenor', 'persona')}
+                isSpeechSupported={isSupported}
+              />
             </div>
             <div>
               <Label htmlFor="audience">Target Audience</Label>
-              <Input id="audience" name="audience" value={promptComponents.tenor.audience} onChange={handleTenorChange} placeholder="e.g., High school students" />
+              <Input id="audience" name="audience" value={promptComponents.tenor.audience} onChange={handleTenorChange} placeholder="e.g., High school students"
+                showSpeechButton={isSupported}
+                isListening={isFieldListening('tenor', 'audience')}
+                onSpeechClick={() => handleSpeechClick('tenor', 'audience')}
+                isSpeechSupported={isSupported}
+              />
             </div>
           </div>
           <div>
             <Label htmlFor="tone">Tone & Style</Label>
-            <Input id="tone" name="tone" value={promptComponents.tenor.tone} onChange={handleTenorChange} placeholder="e.g., Enthusiastic and encouraging" />
+            <Input id="tone" name="tone" value={promptComponents.tenor.tone} onChange={handleTenorChange} placeholder="e.g., Enthusiastic and encouraging"
+              showSpeechButton={isSupported}
+              isListening={isFieldListening('tenor', 'tone')}
+              onSpeechClick={() => handleSpeechClick('tenor', 'tone')}
+              isSpeechSupported={isSupported}
+            />
           </div>
           <div>
             <Label htmlFor="modality">Modality / Confidence</Label>
-            <Input id="modality" name="modality" value={promptComponents.tenor.modality} onChange={handleTenorChange} placeholder="e.g., Express claims cautiously with words like 'may' or 'could'" />
+            <Input id="modality" name="modality" value={promptComponents.tenor.modality} onChange={handleTenorChange} placeholder="e.g., Express claims cautiously with words like 'may' or 'could'"
+              showSpeechButton={isSupported}
+              isListening={isFieldListening('tenor', 'modality')}
+              onSpeechClick={() => handleSpeechClick('tenor', 'modality')}
+              isSpeechSupported={isSupported}
+            />
           </div>
         </div>
       </SectionCard>
@@ -98,15 +179,30 @@ export const PromptComposer: React.FC<PromptComposerProps> = ({
         <div className="space-y-4">
           <div>
             <Label htmlFor="format">Output Format</Label>
-            <Input id="format" name="format" value={promptComponents.mode.format} onChange={handleModeChange} placeholder="e.g., A JSON object, a Python script, a blog post" />
+            <Input id="format" name="format" value={promptComponents.mode.format} onChange={handleModeChange} placeholder="e.g., A JSON object, a Python script, a blog post" 
+              showSpeechButton={isSupported}
+              isListening={isFieldListening('mode', 'format')}
+              onSpeechClick={() => handleSpeechClick('mode', 'format')}
+              isSpeechSupported={isSupported}
+            />
           </div>
           <div>
             <Label htmlFor="structure">Required Structure</Label>
-            <Textarea id="structure" name="structure" value={promptComponents.mode.structure} onChange={handleModeChange} rows={2} placeholder="e.g., Introduction, Main Body (3 paragraphs), Conclusion" />
+            <Textarea id="structure" name="structure" value={promptComponents.mode.structure} onChange={handleModeChange} rows={2} placeholder="e.g., Introduction, Main Body (3 paragraphs), Conclusion" 
+              showSpeechButton={isSupported}
+              isListening={isFieldListening('mode', 'structure')}
+              onSpeechClick={() => handleSpeechClick('mode', 'structure')}
+              isSpeechSupported={isSupported}
+            />
           </div>
           <div>
             <Label htmlFor="constraints">Constraints & Rules</Label>
-            <Input id="constraints" name="constraints" value={promptComponents.mode.constraints} onChange={handleModeChange} placeholder="e.g., Limit response to 200 words. Do not use jargon." />
+            <Input id="constraints" name="constraints" value={promptComponents.mode.constraints} onChange={handleModeChange} placeholder="e.g., Limit response to 200 words. Do not use jargon."
+              showSpeechButton={isSupported}
+              isListening={isFieldListening('mode', 'constraints')}
+              onSpeechClick={() => handleSpeechClick('mode', 'constraints')}
+              isSpeechSupported={isSupported}
+            />
           </div>
         </div>
       </SectionCard>
