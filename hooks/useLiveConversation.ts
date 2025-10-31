@@ -2,7 +2,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { GoogleGenAI, Modality, LiveSession, FunctionDeclaration, Type } from '@google/genai';
 import { encode, decode, decodeAudioData } from '../utils/audioUtils';
-// Fix: Import TranscriptEntry from the shared types file.
+import { fileToBase64, readFileAsText } from '../utils/fileUtils';
 import type { SFLPrompt, TranscriptEntry } from '../types';
 
 type ConversationStatus = 'idle' | 'connecting' | 'active' | 'error';
@@ -102,6 +102,43 @@ export const useLiveConversation = ({ systemInstruction, onUpdatePrompt, onApiKe
     cleanup();
     setStatus('idle');
   }, [cleanup]);
+
+  const uploadFile = useCallback(async (file: File) => {
+    if (!sessionRef.current || status !== 'active') {
+        setError('Cannot upload file: conversation is not active.');
+        return;
+    }
+
+    try {
+        if (file.type.startsWith('image/')) {
+            const imageUrl = URL.createObjectURL(file);
+            setTranscript(prev => [...prev, { speaker: 'user', image: { name: file.name, url: imageUrl } }]);
+
+            const base64Data = await fileToBase64(file);
+            sessionRef.current.sendRealtimeInput({
+                media: { data: base64Data, mimeType: file.type }
+            });
+        } else if (file.type.startsWith('text/')) {
+            const textContent = await readFileAsText(file);
+            const message = `The user uploaded a file named "${file.name}" with the following content:\n\n---\n${textContent}\n---`;
+            
+            // Show a user-friendly message in the transcript, but send the full content to the model
+            setTranscript(prev => [...prev, { speaker: 'user', text: `(Uploaded ${file.name})` }]);
+
+            sessionRef.current.sendRealtimeInput({
+                text: message,
+            });
+        } else {
+            const unsupportedMessage = `File type "${file.type}" is not supported. Please upload an image or a text file.`;
+            setError(unsupportedMessage);
+            setTranscript(prev => [...prev, { speaker: 'system', text: unsupportedMessage }]);
+        }
+    } catch (e) {
+        console.error('Failed to process or send file:', e);
+        const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred while sending the file.';
+        setError(errorMessage);
+    }
+  }, [status]);
   
   const startConversation = useCallback(async () => {
     setStatus('connecting');
@@ -171,7 +208,7 @@ export const useLiveConversation = ({ systemInstruction, onUpdatePrompt, onApiKe
                         const text = message.serverContent.inputTranscription.text;
                         setTranscript(prev => {
                             const last = prev.length > 0 ? prev[prev.length - 1] : null;
-                            if (last?.speaker === 'user') {
+                            if (last?.speaker === 'user' && last.text) {
                                 const updatedLast = { ...last, text: last.text + text };
                                 return [...prev.slice(0, -1), updatedLast];
                             }
@@ -181,7 +218,7 @@ export const useLiveConversation = ({ systemInstruction, onUpdatePrompt, onApiKe
                         const text = message.serverContent.outputTranscription.text;
                         setTranscript(prev => {
                             const last = prev.length > 0 ? prev[prev.length - 1] : null;
-                            if (last?.speaker === 'model') {
+                            if (last?.speaker === 'model' && last.text) {
                                 const updatedLast = { ...last, text: last.text + text };
                                 return [...prev.slice(0, -1), updatedLast];
                             }
@@ -251,5 +288,5 @@ export const useLiveConversation = ({ systemInstruction, onUpdatePrompt, onApiKe
     }
   }, [systemInstruction, cleanup, onUpdatePrompt, onApiKeyError]);
 
-  return { status, transcript, error, startConversation, endConversation };
+  return { status, transcript, error, startConversation, endConversation, uploadFile };
 };

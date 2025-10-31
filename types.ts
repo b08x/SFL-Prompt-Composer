@@ -52,5 +52,12 @@ export interface GenerateContentResult {
   sources: { uri: string; title: string }[];
 }
 
-// Fix: Moved TranscriptEntry here from useLiveConversation.ts to be shared across the app.
-export type TranscriptEntry = { speaker: 'user' | 'model' | 'system'; text: string };
+// A transcript entry can contain spoken text, a system message, or an uploaded image.
+export type TranscriptEntry = {
+  speaker: 'user' | 'model' | 'system';
+  text?: string;
+  image?: {
+    name: string;
+    url: string; // Using a blob URL for preview
+  };
+};

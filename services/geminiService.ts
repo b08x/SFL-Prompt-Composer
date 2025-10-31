@@ -152,7 +152,7 @@ export async function summarizeConversation(transcript: TranscriptEntry[]): Prom
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const model = 'gemini-2.5-flash';
   const formattedTranscript = transcript
-    .filter(entry => entry.speaker !== 'system')
+    .filter(entry => entry.speaker !== 'system' && entry.text)
     .map(entry => `${entry.speaker.toUpperCase()}: ${entry.text}`)
     .join('\n');
 

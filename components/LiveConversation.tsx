@@ -1,12 +1,11 @@
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-// Fix: Import TranscriptEntry from the shared types file, not the hook.
 import { useLiveConversation } from '../hooks/useLiveConversation';
 import { summarizeConversation } from '../services/geminiService';
 import { getGeminiError } from '../utils/errorHandler';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
-import { CONVERSATION_ICON, MIC_ICON, STOP_ICON, USER_AVATAR_ICON, AI_AVATAR_ICON, INFO_ICON, SUMMARY_ICON } from '../constants';
+import { CONVERSATION_ICON, MIC_ICON, STOP_ICON, USER_AVATAR_ICON, AI_AVATAR_ICON, INFO_ICON, SUMMARY_ICON, ATTACHMENT_ICON } from '../constants';
 import type { SFLPrompt, TranscriptEntry } from '../types';
 import { MemoizedMarkdown } from './ui/MemoizedMarkdown';
 
@@ -23,6 +22,7 @@ export const LiveConversation: React.FC<LiveConversationProps> = ({ systemInstru
     error,
     startConversation,
     endConversation,
+    uploadFile,
   } = useLiveConversation({ systemInstruction, onUpdatePrompt, onApiKeyError });
 
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -31,6 +31,7 @@ export const LiveConversation: React.FC<LiveConversationProps> = ({ systemInstru
   const [summaryError, setSummaryError] = useState<string | null>(null);
 
   const transcriptEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Automatically start the conversation when the component mounts (or gets a new key)
   useEffect(() => {
@@ -57,6 +58,22 @@ export const LiveConversation: React.FC<LiveConversationProps> = ({ systemInstru
       setIsSummarizing(false);
     }
   }, [transcript]);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && uploadFile) {
+        uploadFile(file);
+    }
+    // Reset file input to allow selecting the same file again
+    if (event.target) {
+        event.target.value = '';
+    }
+  };
+
+  const triggerFileSelect = () => {
+      fileInputRef.current?.click();
+  };
+
 
   const getStatusIndicator = () => {
     switch (status) {
@@ -153,8 +170,14 @@ export const LiveConversation: React.FC<LiveConversationProps> = ({ systemInstru
                       <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center p-1 ${isUser ? 'bg-slate-600 text-slate-300' : 'bg-violet-500 text-violet-100'}`}>
                           {isUser ? USER_AVATAR_ICON : AI_AVATAR_ICON}
                       </div>
-                      <div className={`text-slate-200 rounded-xl px-4 py-2 max-w-[80%] break-words ${isUser ? 'bg-slate-700 rounded-br-none' : 'bg-violet-600/80 rounded-bl-none'}`}>
-                          {entry.text}
+                      <div className={`text-slate-200 rounded-xl max-w-[80%] break-words ${isUser ? 'bg-slate-700 rounded-br-none' : 'bg-violet-600/80 rounded-bl-none'}`}>
+                          {entry.text && <div className="px-4 py-2">{entry.text}</div>}
+                          {entry.image && (
+                            <div className="p-2">
+                                <img src={entry.image.url} alt={entry.image.name} className="max-w-full h-auto rounded-lg max-h-48" />
+                                <p className="text-xs text-slate-400 mt-1 italic px-2">{entry.image.name}</p>
+                            </div>
+                          )}
                       </div>
                   </div>
               );
@@ -164,23 +187,41 @@ export const LiveConversation: React.FC<LiveConversationProps> = ({ systemInstru
 
         {(error || summaryError) && <p className="text-red-400 text-sm bg-red-900/20 p-3 rounded-md border border-red-800/50 mb-4">{error || summaryError}</p>}
         
-        <Button 
-          onClick={status === 'active' ? endConversation : startConversation}
-          disabled={status === 'connecting'}
-          className="w-full"
-        >
-          {status === 'active' ? (
-            <>
-              <span className="w-5 h-5 mr-2">{STOP_ICON}</span>
-              End Conversation
-            </>
-          ) : (
-            <>
-              <span className="w-5 h-5 mr-2">{MIC_ICON}</span>
-              Start Conversation
-            </>
-          )}
-        </Button>
+        <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileSelect} 
+            className="hidden" 
+            accept="image/*,text/plain,text/markdown"
+        />
+        <div className="flex gap-2">
+            <Button 
+                onClick={status === 'active' ? endConversation : startConversation}
+                disabled={status === 'connecting'}
+                className="w-full"
+            >
+            {status === 'active' ? (
+                <>
+                <span className="w-5 h-5 mr-2">{STOP_ICON}</span>
+                End Conversation
+                </>
+            ) : (
+                <>
+                <span className="w-5 h-5 mr-2">{MIC_ICON}</span>
+                Start Conversation
+                </>
+            )}
+            </Button>
+            <Button
+                onClick={triggerFileSelect}
+                disabled={status !== 'active'}
+                className="flex-shrink-0 !p-2.5 bg-slate-700 hover:bg-slate-600 focus:ring-slate-500"
+                aria-label="Attach file"
+                title="Attach file"
+            >
+                <span className="w-5 h-5">{ATTACHMENT_ICON}</span>
+            </Button>
+        </div>
       </Card>
     </>
   );
