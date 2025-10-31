@@ -5,13 +5,13 @@ import { GeneratedPromptView } from './components/GeneratedPromptView';
 import { ResponseDisplay } from './components/ResponseDisplay';
 import { PromptWizardModal } from './components/PromptWizardModal';
 import { HelpModal } from './components/HelpModal';
+import { ValidationModal } from './components/ValidationModal';
 import { generateContent } from './services/geminiService';
 import { getGeminiError } from './utils/errorHandler';
 import type { SFLPrompt } from './types';
 import { SFL_ICON, WIZARD_ICON, HELP_ICON, CONVERSATION_ICON } from './constants';
 import { Button } from './components/ui/Button';
 import { LiveConversation } from './components/LiveConversation';
-import { ValidationPane } from './components/ValidationPane';
 import { usePromptValidator } from './hooks/usePromptValidator';
 
 interface LlmResponse {
@@ -47,6 +47,7 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isWizardOpen, setIsWizardOpen] = useState<boolean>(false);
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
+  const [isValidationModalOpen, setIsValidationModalOpen] = useState<boolean>(false);
   const [generationId, setGenerationId] = useState(0);
   const [isApiKeyReady, setIsApiKeyReady] = useState(false);
   const [apiKeyHasFailed, setApiKeyHasFailed] = useState(false);
@@ -190,6 +191,12 @@ BEGIN RESPONSE.
         onComplete={handleWizardComplete}
       />
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      <ValidationModal
+        isOpen={isValidationModalOpen}
+        onClose={() => setIsValidationModalOpen(false)}
+        validationResult={validationResult}
+        isLoading={isValidating}
+      />
       <div className="min-h-screen bg-slate-900 font-sans p-4 sm:p-6 lg:p-8">
         <div>
           <header className="mb-8">
@@ -217,7 +224,7 @@ BEGIN RESPONSE.
             </div>
           </header>
 
-          <main className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+          <main className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <PromptComposer
               promptComponents={promptComponents}
               setPromptComponents={setPromptComponents}
@@ -228,15 +235,15 @@ BEGIN RESPONSE.
                 setPrompt={setAssembledPrompt}
                 onGenerate={handleGenerate}
                 isLoading={isLoading}
+                onOpenAnalysis={() => setIsValidationModalOpen(true)}
+                validationResult={validationResult}
+                isValidating={isValidating}
               />
               <ResponseDisplay
                 response={llmResponse}
                 isLoading={isLoading}
                 error={error}
               />
-            </div>
-            <div className="lg:col-span-2 xl:col-span-1 space-y-8">
-              <ValidationPane validationResult={validationResult} isLoading={isValidating} />
               {llmResponse && !error && (
                 <LiveConversation
                   key={generationId}
