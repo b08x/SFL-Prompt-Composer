@@ -13,7 +13,7 @@ import { MemoizedMarkdown } from './ui/MemoizedMarkdown';
 interface LiveConversationProps {
   systemInstruction: string;
   onUpdatePrompt: (updates: Partial<SFLPrompt>) => void;
-  onApiKeyError: () => void;
+  onApiKeyError: (message?: string) => void;
 }
 
 export const LiveConversation: React.FC<LiveConversationProps> = ({ systemInstruction, onUpdatePrompt, onApiKeyError }) => {

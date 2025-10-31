@@ -10,7 +10,7 @@ type ConversationStatus = 'idle' | 'connecting' | 'active' | 'error';
 interface UseLiveConversationProps {
   systemInstruction: string;
   onUpdatePrompt: (updates: Partial<SFLPrompt>) => void;
-  onApiKeyError: () => void;
+  onApiKeyError: (message?: string) => void;
 }
 
 const updatePromptComponentsFunctionDeclaration: FunctionDeclaration = {
@@ -216,13 +216,12 @@ export const useLiveConversation = ({ systemInstruction, onUpdatePrompt, onApiKe
                 },
                 onerror: (e: any) => {
                     console.error('Live session error:', e);
-                    const errorMessage = e?.message || '';
-                    if (errorMessage.includes('Network error') || errorMessage.includes('Requested entity was not found')) {
-                        setError('Connection failed. This may be due to an invalid API key. Please re-select your key.');
-                        onApiKeyError();
-                    } else {
-                        setError('A connection error occurred.');
-                    }
+                    const rawErrorMessage = e?.message || 'An unknown connection error occurred.';
+                    // Treat any connection error as a potential API key issue, as it's the most common and user-fixable problem.
+                    const userFriendlyMessage = 'Live session failed. This could be due to an invalid API key or network issue.';
+                    
+                    setError(userFriendlyMessage); // Set local error for the component itself
+                    onApiKeyError(rawErrorMessage); // Bubble up the raw error to trigger the modal
                     setStatus('error');
                     cleanup();
                 },
@@ -244,7 +243,9 @@ export const useLiveConversation = ({ systemInstruction, onUpdatePrompt, onApiKe
 
     } catch (e) {
         console.error('Failed to start conversation:', e);
-        setError(e instanceof Error ? e.message : 'An unknown error occurred.');
+        const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
+        setError(errorMessage);
+        onApiKeyError(errorMessage)
         setStatus('error');
         cleanup();
     }

@@ -1,15 +1,9 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import type { SFLPrompt, ValidationResult, TranscriptEntry, GenerateContentResult } from "../types";
 
-const API_KEY = process.env.API_KEY;
-
-if (!API_KEY) {
-  throw new Error("API_KEY environment variable not set");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
-
 export async function generateContent(prompt: string): Promise<GenerateContentResult> {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const model = 'gemini-2.5-flash';
   const response = await ai.models.generateContent({
     model,
@@ -25,7 +19,6 @@ export async function generateContent(prompt: string): Promise<GenerateContentRe
     .filter((web): web is { uri: string; title: string } => !!(web && web.uri && web.title))
     .map(web => ({ uri: web.uri, title: web.title }));
 
-  // Fix: Deduplicate sources based on URI using a method with more robust type inference.
   const uniqueSources: { uri: string; title: string }[] = Object.values(
     Object.fromEntries(sources.map(item => [item.uri, item]))
   );
@@ -37,6 +30,7 @@ export async function generateContent(prompt: string): Promise<GenerateContentRe
 }
 
 export async function validatePrompt(promptComponents: SFLPrompt): Promise<ValidationResult> {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const model = 'gemini-2.5-pro';
     const validationPrompt = `
     Analyze the following SFL (Systemic Functional Linguistics) prompt components for coherence, clarity, and effectiveness.
@@ -102,6 +96,7 @@ export async function validatePrompt(promptComponents: SFLPrompt): Promise<Valid
 
 
 export async function analyzeTextForSFL(text: string): Promise<SFLPrompt> {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const model = 'gemini-2.5-pro';
   const prompt = `
     Analyze the following text and extract its Systemic Functional Linguistics (SFL) components.
@@ -154,6 +149,7 @@ export async function analyzeTextForSFL(text: string): Promise<SFLPrompt> {
 }
 
 export async function summarizeConversation(transcript: TranscriptEntry[]): Promise<string> {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const model = 'gemini-2.5-flash';
   const formattedTranscript = transcript
     .filter(entry => entry.speaker !== 'system')

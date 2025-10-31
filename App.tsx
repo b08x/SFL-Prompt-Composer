@@ -49,13 +49,13 @@ const App: React.FC = () => {
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
   const [generationId, setGenerationId] = useState(0);
   const [isApiKeyReady, setIsApiKeyReady] = useState(false);
+  const [apiKeyHasFailed, setApiKeyHasFailed] = useState(false);
+  const [apiKeyErrorDetails, setApiKeyErrorDetails] = useState<string | null>(null);
 
   const { validationResult, isLoading: isValidating } = usePromptValidator(promptComponents);
 
   useEffect(() => {
     const checkApiKey = async () => {
-      // In a real AI Studio environment, window.aistudio would be available.
-      // We check for its existence for robust development outside that environment.
       if ((window as any).aistudio && await (window as any).aistudio.hasSelectedApiKey()) {
         setIsApiKeyReady(true);
       }
@@ -66,12 +66,17 @@ const App: React.FC = () => {
   const handleSelectKey = async () => {
     if ((window as any).aistudio) {
       await (window as any).aistudio.openSelectKey();
-      // Optimistically assume the user selected a key to avoid race conditions
+      // After user selects, reset the failed state and assume the new key is good.
+      setApiKeyHasFailed(false);
+      setApiKeyErrorDetails(null);
       setIsApiKeyReady(true);
     }
   };
 
-  const handleApiKeyError = useCallback(() => {
+  const handleApiKeyError = useCallback((message?: string) => {
+    // The key we were using failed. Mark it and prompt the user again.
+    setApiKeyHasFailed(true);
+    setApiKeyErrorDetails(message || 'An unknown error occurred.');
     setIsApiKeyReady(false);
   }, []);
 
@@ -118,11 +123,14 @@ BEGIN RESPONSE.
     } catch (e) {
       console.error("Generation failed:", e);
       const errorMessage = getGeminiError(e);
+      if (errorMessage.includes('API key')) {
+        handleApiKeyError(e instanceof Error ? e.message : String(e));
+      }
       setError(`Failed to generate response: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
-  }, [assembledPrompt]);
+  }, [assembledPrompt, handleApiKeyError]);
 
   const handleWizardComplete = (newComponents: SFLPrompt) => {
     setPromptComponents(newComponents);
@@ -143,6 +151,20 @@ BEGIN RESPONSE.
         <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-lg text-center">
           <div className="mx-auto w-12 h-12 text-violet-400 mb-4">{CONVERSATION_ICON}</div>
           <h2 className="text-2xl font-bold text-slate-100 mb-2">API Key Required</h2>
+          
+          {apiKeyHasFailed && (
+             <div className="bg-red-900/30 border border-red-500/30 text-red-300 text-sm rounded-lg p-3 mb-4 text-left">
+                <p className="font-semibold">Connection failed with the last key.</p>
+                <p className="text-xs text-red-400 mt-1">Please select a valid key from a project with billing enabled.</p>
+                {apiKeyErrorDetails && (
+                  <details className="mt-2 text-xs">
+                    <summary className="cursor-pointer font-medium text-red-400/80 hover:text-red-300">Show error details</summary>
+                    <p className="mt-1 text-red-400/70 font-mono break-all">{apiKeyErrorDetails}</p>
+                  </details>
+                )}
+            </div>
+          )}
+
           <p className="text-slate-400 mb-6">
             The real-time "Converse & Refine" feature requires selecting an API key from a project with billing enabled.
           </p>
