@@ -254,11 +254,38 @@ export const useLiveConversation = ({ systemInstruction, onUpdatePrompt, onApiKe
                 onerror: (e: any) => {
                     console.error('Live session error:', e);
                     const rawErrorMessage = e?.message || 'An unknown connection error occurred.';
-                    // Treat any connection error as a potential API key issue, as it's the most common and user-fixable problem.
-                    const userFriendlyMessage = 'Live session failed. This could be due to an invalid API key or network issue.';
+                    let userFriendlyMessage: string;
+                    let isApiKeyError = false;
+
+                    const lowerCaseError = rawErrorMessage.toLowerCase();
+
+                    if (
+                        lowerCaseError.includes('api key') ||
+                        lowerCaseError.includes('requested entity was not found') ||
+                        lowerCaseError.includes('permission denied')
+                    ) {
+                        userFriendlyMessage = 'Live session failed due to an API key or permission issue. Please select a valid key to continue.';
+                        isApiKeyError = true;
+                    } else if (
+                        lowerCaseError.includes('service is currently unavailable') ||
+                        lowerCaseError.includes('500') ||
+                        lowerCaseError.includes('503')
+                    ) {
+                        userFriendlyMessage = 'The live conversation service is temporarily unavailable. Please try again later.';
+                    } else if (
+                        lowerCaseError.includes('network error') ||
+                        lowerCaseError.includes('failed to fetch')
+                    ) {
+                        userFriendlyMessage = 'A network error occurred. Please check your internet connection and try again.';
+                    } else {
+                        userFriendlyMessage = 'An unexpected error occurred with the live session. Please try restarting the conversation.';
+                    }
+
+                    setError(userFriendlyMessage);
+                    if (isApiKeyError) {
+                        onApiKeyError(rawErrorMessage);
+                    }
                     
-                    setError(userFriendlyMessage); // Set local error for the component itself
-                    onApiKeyError(rawErrorMessage); // Bubble up the raw error to trigger the modal
                     setStatus('error');
                     cleanup();
                 },
