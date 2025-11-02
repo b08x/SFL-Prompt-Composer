@@ -185,7 +185,7 @@ export const PromptComposer: React.FC<PromptComposerProps> = ({
         <div className="space-y-4">
           <div>
             <Label htmlFor="format">Output Format</Label>
-            <Textarea id="format" name="format" value={promptComponents.mode.format} onChange={handleModeChange} placeholder="e.g., A JSON object, a Python script, a blog post" 
+            <Textarea id="format" name="format" value={promptComponents.mode.format} onChange={handleModeChange} placeholder="e.g., a blog post, a technical report, a marketing email, a Python script, a JSON object" 
               rows={1}
               showSpeechButton={isSupported}
               isListening={isFieldListening('mode', 'format')}
