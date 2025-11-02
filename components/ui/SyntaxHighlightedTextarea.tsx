@@ -7,7 +7,8 @@ interface SyntaxHighlightedTextareaProps extends React.TextareaHTMLAttributes<HT
 
 export const SyntaxHighlightedTextarea: React.FC<SyntaxHighlightedTextareaProps> = ({ value, className, ...props }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const backdropRef = useRef<HTMLDivElement>(null);
+  // FIX: Changed ref type from HTMLDivElement to HTMLPreElement to match the element it is attached to.
+  const backdropRef = useRef<HTMLPreElement>(null);
 
   const handleScroll = () => {
     if (backdropRef.current && textareaRef.current) {
