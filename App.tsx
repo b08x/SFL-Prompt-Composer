@@ -6,6 +6,7 @@ import { ResponseDisplay } from './components/ResponseDisplay';
 import { PromptWizardModal } from './components/PromptWizardModal';
 import { HelpModal } from './components/HelpModal';
 import { ValidationModal } from './components/ValidationModal';
+import { UserInputModal } from './components/UserInputModal';
 import { generateContent } from './services/geminiService';
 import { getGeminiError } from './utils/errorHandler';
 import type { SFLPrompt } from './types';
@@ -48,10 +49,14 @@ const App: React.FC = () => {
   const [isWizardOpen, setIsWizardOpen] = useState<boolean>(false);
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
   const [isValidationModalOpen, setIsValidationModalOpen] = useState<boolean>(false);
+  const [isInputModalOpen, setIsInputModalOpen] = useState<boolean>(false);
+  const [isInputRequired, setIsInputRequired] = useState<boolean>(false);
   const [generationId, setGenerationId] = useState(0);
   const [isApiKeyReady, setIsApiKeyReady] = useState(false);
   const [apiKeyHasFailed, setApiKeyHasFailed] = useState(false);
   const [apiKeyErrorDetails, setApiKeyErrorDetails] = useState<string | null>(null);
+  const [latestContextForChat, setLatestContextForChat] = useState<{ prompt: string; response: string } | null>(null);
+
 
   const { validationResult, isLoading: isValidating } = usePromptValidator(promptComponents);
 
@@ -64,10 +69,16 @@ const App: React.FC = () => {
     checkApiKey();
   }, []);
 
+  // Update chat context whenever a new response is generated
+  useEffect(() => {
+    if (llmResponse) {
+      setLatestContextForChat({ prompt: assembledPrompt, response: llmResponse.text });
+    }
+  }, [generationId, llmResponse, assembledPrompt]);
+
   const handleSelectKey = async () => {
     if ((window as any).aistudio) {
       await (window as any).aistudio.openSelectKey();
-      // After user selects, reset the failed state and assume the new key is good.
       setApiKeyHasFailed(false);
       setApiKeyErrorDetails(null);
       setIsApiKeyReady(true);
@@ -75,7 +86,6 @@ const App: React.FC = () => {
   };
 
   const handleApiKeyError = useCallback((message?: string) => {
-    // The key we were using failed. Mark it and prompt the user again.
     setApiKeyHasFailed(true);
     setApiKeyErrorDetails(message || 'An unknown error occurred.');
     setIsApiKeyReady(false);
@@ -85,7 +95,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const assemble = () => {
       const { field, tenor, mode } = promptComponents;
-      const prompt = `
+      let prompt = `
 ### INSTRUCTION: Based on the context below, generate a response. ###
 
 ### SFL CONTEXT: FIELD (The "What") ###
@@ -104,7 +114,17 @@ const App: React.FC = () => {
 - OUTPUT FORMAT: ${mode.format || 'A well-structured text.'}
 - REQUIRED STRUCTURE: ${mode.structure || 'Standard paragraph format.'}
 - CONSTRAINTS & RULES: ${mode.constraints || 'None.'}
+      `;
 
+      if (isInputRequired) {
+        prompt += `
+
+### USER PROVIDED INPUT ###
+{{USER_INPUT}}
+`;
+      }
+
+      prompt += `
 ---
 
 BEGIN RESPONSE.
@@ -112,13 +132,13 @@ BEGIN RESPONSE.
       setAssembledPrompt(prompt.trim());
     };
     assemble();
-  }, [promptComponents]);
-
-  const handleGenerate = useCallback(async () => {
+  }, [promptComponents, isInputRequired]);
+  
+  const performGeneration = useCallback(async (finalPrompt: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await generateContent(assembledPrompt);
+      const response = await generateContent(finalPrompt);
       setLlmResponse(response);
       setGenerationId(id => id + 1);
     } catch (e) {
@@ -131,7 +151,21 @@ BEGIN RESPONSE.
     } finally {
       setIsLoading(false);
     }
-  }, [assembledPrompt, handleApiKeyError]);
+  }, [handleApiKeyError]);
+
+  const handleGenerate = useCallback(async () => {
+    if (isInputRequired) {
+      setIsInputModalOpen(true);
+    } else {
+      performGeneration(assembledPrompt);
+    }
+  }, [isInputRequired, assembledPrompt, performGeneration]);
+  
+  const handleGenerateWithInput = useCallback(async (userInput: string) => {
+    setIsInputModalOpen(false);
+    const finalPrompt = assembledPrompt.replace(/### USER PROVIDED INPUT ###\s*{{USER_INPUT}}/, `### USER PROVIDED INPUT ###\n${userInput}`);
+    performGeneration(finalPrompt);
+  }, [assembledPrompt, performGeneration]);
 
   const handleWizardComplete = (newComponents: SFLPrompt) => {
     setPromptComponents(newComponents);
@@ -197,6 +231,12 @@ BEGIN RESPONSE.
         validationResult={validationResult}
         isLoading={isValidating}
       />
+      <UserInputModal
+        isOpen={isInputModalOpen}
+        onClose={() => setIsInputModalOpen(false)}
+        onSubmit={handleGenerateWithInput}
+        isLoading={isLoading}
+      />
       <div className="min-h-screen bg-slate-900 font-sans p-4 sm:p-6 lg:p-8">
         <div>
           <header className="mb-8">
@@ -228,6 +268,8 @@ BEGIN RESPONSE.
             <PromptComposer
               promptComponents={promptComponents}
               setPromptComponents={setPromptComponents}
+              isInputRequired={isInputRequired}
+              setIsInputRequired={setIsInputRequired}
             />
             <div className="space-y-8 flex flex-col">
               <GeneratedPromptView
@@ -244,18 +286,19 @@ BEGIN RESPONSE.
                 isLoading={isLoading}
                 error={error}
               />
-              {llmResponse && !error && (
-                <LiveConversation
-                  key={generationId}
-                  onUpdatePrompt={handlePromptUpdateFromConversation}
-                  onApiKeyError={handleApiKeyError}
-                  systemInstruction={`You are a helpful AI assistant. The user wants to refine a prompt or its response. Your primary tool is 'updatePromptComponents'. Listen for instructions to change the prompt's topic, persona, tone, format, etc., and use the tool to apply these changes in real-time. Do not ask for confirmation before using the tool. After a successful update, briefly confirm what you've changed. The user's original assembled prompt was:\n\n---\nPROMPT:\n${assembledPrompt}\n---\n\nThe response you generated was:\n\n---\nRESPONSE:\n${llmResponse.text}\n---\n\nYou have just generated the response above. Start the conversation by providing a brief, high-level summary of what you've generated and how it addresses the user's prompt. Then, ask for feedback or how you can refine it further.`}
-                />
-              )}
             </div>
           </main>
         </div>
       </div>
+
+      {isApiKeyReady && (
+        <LiveConversation
+          onUpdatePrompt={handlePromptUpdateFromConversation}
+          onApiKeyError={handleApiKeyError}
+          latestContext={latestContextForChat}
+          systemInstruction={`You are a helpful AI assistant. The user wants to refine a prompt or its response. Your primary tool is 'updatePromptComponents'. Listen for instructions to change the prompt's topic, persona, tone, format, etc., and use the tool to apply these changes in real-time. Do not ask for confirmation before using the tool. After a successful update, briefly confirm what you've changed.`}
+        />
+      )}
     </>
   );
 };

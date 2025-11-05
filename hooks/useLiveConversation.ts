@@ -11,6 +11,7 @@ interface UseLiveConversationProps {
   systemInstruction: string;
   onUpdatePrompt: (updates: Partial<SFLPrompt>) => void;
   onApiKeyError: (message?: string) => void;
+  latestContext: { prompt: string; response: string } | null;
 }
 
 const updatePromptComponentsFunctionDeclaration: FunctionDeclaration = {
@@ -53,7 +54,7 @@ const updatePromptComponentsFunctionDeclaration: FunctionDeclaration = {
     },
 };
 
-export const useLiveConversation = ({ systemInstruction, onUpdatePrompt, onApiKeyError }: UseLiveConversationProps) => {
+export const useLiveConversation = ({ systemInstruction, onUpdatePrompt, onApiKeyError, latestContext }: UseLiveConversationProps) => {
   const [status, setStatus] = useState<ConversationStatus>('idle');
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -103,6 +104,24 @@ export const useLiveConversation = ({ systemInstruction, onUpdatePrompt, onApiKe
     setStatus('idle');
   }, [cleanup]);
 
+  const sendTextMessage = useCallback((text: string) => {
+    if (!sessionRef.current || status !== 'active') {
+        setError('Cannot send message: conversation is not active.');
+        return;
+    }
+    if (!text.trim()) return;
+
+    try {
+        const trimmedText = text.trim();
+        setTranscript(prev => [...prev, { speaker: 'user', text: trimmedText }]);
+        sessionRef.current.sendRealtimeInput({ text: trimmedText });
+    } catch (e) {
+        console.error('Failed to send text message:', e);
+        const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred while sending the message.';
+        setError(errorMessage);
+    }
+  }, [status]);
+
   const uploadFile = useCallback(async (file: File) => {
     if (!sessionRef.current || status !== 'active') {
         setError('Cannot upload file: conversation is not active.');
@@ -122,7 +141,6 @@ export const useLiveConversation = ({ systemInstruction, onUpdatePrompt, onApiKe
             const textContent = await readFileAsText(file);
             const message = `The user uploaded a file named "${file.name}" with the following content:\n\n---\n${textContent}\n---`;
             
-            // Show a user-friendly message in the transcript, but send the full content to the model
             setTranscript(prev => [...prev, { speaker: 'user', text: `(Uploaded ${file.name})` }]);
 
             sessionRef.current.sendRealtimeInput({
@@ -143,7 +161,8 @@ export const useLiveConversation = ({ systemInstruction, onUpdatePrompt, onApiKe
   const startConversation = useCallback(async () => {
     setStatus('connecting');
     setError(null);
-    setTranscript([]);
+    // Do not clear transcript, to maintain history across sessions
+    // setTranscript([]);
 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -153,12 +172,21 @@ export const useLiveConversation = ({ systemInstruction, onUpdatePrompt, onApiKe
 
         inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
         outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        
+        let dynamicSystemInstruction = systemInstruction;
+        if (latestContext) {
+          dynamicSystemInstruction += `\n\n### CURRENT CONTEXT\nThe user most recently generated a response with the following details:\nPROMPT:\n${latestContext.prompt}\n\nRESPONSE:\n${latestContext.response}`;
+        }
+
 
         const sessionPromise = ai.live.connect({
             model: 'gemini-2.5-flash-native-audio-preview-09-2025',
             callbacks: {
                 onopen: () => {
                     setStatus('active');
+                    if (latestContext) {
+                        setTranscript(prev => [...prev, { speaker: 'system', text: 'Context updated with the latest response.' }]);
+                    }
                     const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
                     mediaStreamSourceRef.current = source;
                     const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(4096, 1, 1);
@@ -253,7 +281,13 @@ export const useLiveConversation = ({ systemInstruction, onUpdatePrompt, onApiKe
                 },
                 onerror: (e: any) => {
                     console.error('Live session error:', e);
-                    const rawErrorMessage = e?.message || 'An unknown connection error occurred.';
+
+                    let detailedMessage = '';
+                    if (e && e.error) {
+                        detailedMessage = e.error instanceof Error ? e.error.message : String(e.error);
+                    }
+                    const rawErrorMessage = e?.message || detailedMessage || 'An unknown connection error occurred.';
+                    
                     let userFriendlyMessage: string;
                     let isApiKeyError = false;
 
@@ -298,7 +332,7 @@ export const useLiveConversation = ({ systemInstruction, onUpdatePrompt, onApiKe
                 responseModalities: [Modality.AUDIO],
                 inputAudioTranscription: {},
                 outputAudioTranscription: {},
-                systemInstruction,
+                systemInstruction: dynamicSystemInstruction,
                 tools: [{ functionDeclarations: [updatePromptComponentsFunctionDeclaration] }],
             },
         });
@@ -313,7 +347,7 @@ export const useLiveConversation = ({ systemInstruction, onUpdatePrompt, onApiKe
         setStatus('error');
         cleanup();
     }
-  }, [systemInstruction, cleanup, onUpdatePrompt, onApiKeyError]);
+  }, [systemInstruction, latestContext, cleanup, onUpdatePrompt, onApiKeyError]);
 
-  return { status, transcript, error, startConversation, endConversation, uploadFile };
+  return { status, transcript, error, startConversation, endConversation, uploadFile, sendTextMessage };
 };

@@ -6,17 +6,22 @@ import { Label } from './ui/Label';
 import { Textarea } from './ui/Textarea';
 import { Select } from './ui/Select';
 import { Tooltip } from './ui/Tooltip';
-import { FIELD_ICON, TENOR_ICON, MODE_ICON, TASK_VERBS } from '../constants';
+import { Checkbox } from './ui/Checkbox';
+import { FIELD_ICON, TENOR_ICON, MODE_ICON, INPUT_ICON, TASK_VERBS } from '../constants';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 
 interface PromptComposerProps {
   promptComponents: SFLPrompt;
   setPromptComponents: React.Dispatch<React.SetStateAction<SFLPrompt>>;
+  isInputRequired: boolean;
+  setIsInputRequired: (value: boolean) => void;
 }
 
 export const PromptComposer: React.FC<PromptComposerProps> = ({
   promptComponents,
   setPromptComponents,
+  isInputRequired,
+  setIsInputRequired,
 }) => {
   const [speechTarget, setSpeechTarget] = useState<{ category: keyof SFLPrompt; field: string } | null>(null);
 
@@ -213,6 +218,20 @@ export const PromptComposer: React.FC<PromptComposerProps> = ({
             />
           </div>
         </div>
+      </SectionCard>
+
+      <SectionCard
+        icon={INPUT_ICON}
+        title="Input (Optional)"
+        tooltip="If checked, the generated prompt will include a placeholder for you to provide additional input right before generating the response."
+      >
+        <Checkbox
+          id="require-input"
+          label="Request user input with prompt"
+          description="A dialog will appear for your input when you click 'Generate Response'."
+          checked={isInputRequired}
+          onChange={(e) => setIsInputRequired(e.target.checked)}
+        />
       </SectionCard>
     </div>
   );

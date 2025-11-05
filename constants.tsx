@@ -37,6 +37,13 @@ export const MODE_ICON = (
   </svg>
 );
 
+export const INPUT_ICON = (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6.75h-3v10.5h3m-3-10.5h10.5a2.25 2.25 0 0 1 2.25 2.25v6a2.25 2.25 0 0 1-2.25 2.25H7.5" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 10.5h.008v.008h-.008V10.5Zm.008 3h.008v.008h-.008V13.5Zm-3-3h.008v.008h-.008V10.5Zm0 3h.008v.008h-.008V13.5Z" />
+  </svg>
+);
+
 export const CONVERSATION_ICON = (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193l-3.72 3.72a1.125 1.125 0 0 1-1.59 0l-3.72-3.72h-1.482c-1.136 0-2.193-.847-2.193-1.98V10.608c0-.97.616-1.813 1.5-2.097m6.75-3.686-3.72 3.72h-1.482a2.193 2.193 0 0 0-2.193 2.193v4.286c0 .847.46 1.581 1.155 1.951m9.045-9.045a2.193 2.193 0 0 0-2.193-2.193h-1.482l-3.72-3.72a1.125 1.125 0 0 0-1.59 0l-3.72 3.72H3.75c-1.136 0-2.193.847-2.193 2.193v4.286c0 1.136.847 2.1 1.98 2.193l3.72 3.72a1.125 1.125 0 0 0 1.59 0l3.72-3.72h1.482c1.136 0 2.193-.847 2.193-1.98V10.608c0-.97-.616-1.813-1.5-2.097" />
@@ -101,6 +108,18 @@ export const WARNING_ICON = (
 export const ATTACHMENT_ICON = (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.122 2.122l7.81-7.81" />
+  </svg>
+);
+
+export const SEND_ICON = (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+    </svg>
+);
+
+export const X_ICON = (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
   </svg>
 );
 

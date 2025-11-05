@@ -1,3 +1,4 @@
+
 export const highlightSFLSyntax = (text: string): string => {
   if (!text) return '';
 
@@ -14,6 +15,10 @@ export const highlightSFLSyntax = (text: string): string => {
   const highlightedLines = lines.map(line => {
     const escapedLine = escapeHtml(line);
     
+    if (escapedLine.trim() === '{{USER_INPUT}}') {
+      return `<span class="block text-center w-full bg-slate-700/50 rounded p-3 my-2 text-yellow-300 animate-pulse border border-dashed border-slate-600">-- Your Input Will Go Here --</span>`;
+    }
+
     // Section headers (e.g., ### INSTRUCTION: ###)
     if (escapedLine.trim().startsWith('###')) {
       return `<span class="text-violet-400 font-semibold">${escapedLine}</span>`;
