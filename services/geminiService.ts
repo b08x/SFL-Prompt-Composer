@@ -42,6 +42,8 @@ export async function validatePrompt(promptComponents: SFLPrompt): Promise<Valid
     Evaluate the components, provide an overall coherence score from 0 to 100 (where 100 is perfect), a brief qualitative assessment, and a list of specific issues with actionable suggestions.
     If there are no issues, return an empty issues array. Issues should be categorized by severity: 'error' (likely to cause major problems), 'warning' (may lead to suboptimal results), 'info' (minor suggestion for improvement).
 
+    For each issue, if it's a direct change suggestion (e.g., "change X to Y"), also provide a 'suggestionPatch' object with 'component', 'field', and 'value' to programmatically apply the change. For example: { "component": "tenor", "field": "tone", "value": "Formal and academic" }. Do not provide a patch for vague suggestions that require user creativity.
+
     SFL Components:
     - Field: ${JSON.stringify(promptComponents.field)}
     - Tenor: ${JSON.stringify(promptComponents.tenor)}
@@ -65,6 +67,15 @@ export async function validatePrompt(promptComponents: SFLPrompt): Promise<Valid
                         grammar: { type: Type.STRING, description: "The grammar aspect: 'Functional', 'Generative', or 'Pragmatic'." },
                         message: { type: Type.STRING, description: "A clear, concise message explaining the issue." },
                         suggestion: { type: Type.STRING, description: "An actionable suggestion for how to improve the prompt." },
+                        suggestionPatch: {
+                            type: Type.OBJECT,
+                            description: "An optional object for programmatically applying the suggestion.",
+                            properties: {
+                                component: { type: Type.STRING, description: "The SFL component to update: 'field', 'tenor', or 'mode'." },
+                                field: { type: Type.STRING, description: "The specific field within the component to update." },
+                                value: { type: Type.STRING, description: "The new value for the field." },
+                            },
+                        },
                     },
                     required: ['id', 'component', 'severity', 'grammar', 'message', 'suggestion'],
                 },

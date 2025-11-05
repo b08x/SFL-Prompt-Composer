@@ -31,6 +31,12 @@ export type Severity = 'error' | 'warning' | 'info';
 export type GrammarAspect = 'Functional' | 'Generative' | 'Pragmatic';
 export type SFLComponent = 'Field' | 'Tenor' | 'Mode' | 'Cross-Component';
 
+export interface SuggestionPatch {
+  component: keyof SFLPrompt;
+  field: string;
+  value: string;
+}
+
 export interface ValidationIssue {
   id: string;
   component: SFLComponent;
@@ -39,6 +45,7 @@ export interface ValidationIssue {
   grammar: GrammarAspect;
   message: string;
   suggestion: string;
+  suggestionPatch?: SuggestionPatch;
 }
 
 export interface ValidationResult {

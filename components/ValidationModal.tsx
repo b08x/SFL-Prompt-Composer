@@ -1,14 +1,17 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from './ui/Button';
 import { VALIDATION_ICON, ERROR_ICON, WARNING_ICON, INFO_ICON } from '../constants';
-import type { ValidationResult, ValidationIssue, Severity, GrammarAspect, SFLComponent } from '../types';
+import type { ValidationResult, ValidationIssue, Severity, GrammarAspect, SFLComponent, SuggestionPatch } from '../types';
 
 interface ValidationModalProps {
     isOpen: boolean;
     onClose: () => void;
     validationResult: ValidationResult | null;
-    isLoading: boolean;
+    isLoading: boolean; // For validation
+    isGenerating: boolean; // For response generation
+    onGenerate: () => void;
+    onApplySuggestion: (patch: SuggestionPatch) => void;
 }
 
 const severityConfig: Record<Severity, { icon: React.ReactNode; color: string; ringColor: string }> = {
@@ -57,8 +60,17 @@ const LoadingSkeleton: React.FC = () => (
 );
 
 
-export const ValidationModal: React.FC<ValidationModalProps> = ({ isOpen, onClose, validationResult, isLoading }) => {
+export const ValidationModal: React.FC<ValidationModalProps> = ({ isOpen, onClose, validationResult, isLoading, isGenerating, onGenerate, onApplySuggestion }) => {
+    const [appliedSuggestions, setAppliedSuggestions] = useState<Set<string>>(new Set());
+
     if (!isOpen) return null;
+    
+    const handleApply = (issue: ValidationIssue) => {
+        if (issue.suggestionPatch) {
+            onApplySuggestion(issue.suggestionPatch);
+            setAppliedSuggestions(prev => new Set(prev).add(issue.id));
+        }
+    };
     
     const issues = validationResult?.issues || [];
     const groupedIssues = groupIssuesByComponent(issues);
@@ -139,6 +151,15 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({ isOpen, onClos
                                                             <p className="text-slate-400 text-sm mt-1">
                                                                 <strong className="text-slate-300">Suggestion:</strong> {issue.suggestion}
                                                             </p>
+                                                            {issue.suggestionPatch && (
+                                                                <button
+                                                                    onClick={() => handleApply(issue)}
+                                                                    disabled={appliedSuggestions.has(issue.id)}
+                                                                    className="text-xs font-semibold text-violet-400 hover:text-violet-300 disabled:text-slate-500 disabled:cursor-not-allowed mt-2 bg-violet-500/10 hover:bg-violet-500/20 px-2 py-1 rounded-md transition-colors"
+                                                                >
+                                                                    {appliedSuggestions.has(issue.id) ? 'Applied' : 'Apply Suggestion'}
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 ))}
@@ -152,9 +173,20 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({ isOpen, onClos
                     )}
                 </div>
 
-                <div className="mt-6 pt-6 border-t border-slate-700 flex justify-end flex-shrink-0">
+                <div className="mt-6 pt-6 border-t border-slate-700 flex justify-between items-center flex-shrink-0">
                     <Button onClick={onClose} className="bg-slate-700 hover:bg-slate-600 focus:ring-slate-500">
-                        Close
+                        Edit Manually
+                    </Button>
+                    <Button onClick={onGenerate} disabled={isGenerating}>
+                        {isGenerating ? (
+                            <>
+                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Generating...
+                            </>
+                        ) : 'Generate Response'}
                     </Button>
                 </div>
             </div>

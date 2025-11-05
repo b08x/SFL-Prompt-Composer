@@ -9,7 +9,7 @@ import { ValidationModal } from './components/ValidationModal';
 import { UserInputModal } from './components/UserInputModal';
 import { generateContent } from './services/geminiService';
 import { getGeminiError } from './utils/errorHandler';
-import type { SFLPrompt } from './types';
+import type { SFLPrompt, SuggestionPatch } from './types';
 import { SFL_ICON, WIZARD_ICON, HELP_ICON, CONVERSATION_ICON } from './constants';
 import { Button } from './components/ui/Button';
 import { LiveConversation } from './components/LiveConversation';
@@ -152,20 +152,21 @@ BEGIN RESPONSE.
       setIsLoading(false);
     }
   }, [handleApiKeyError]);
-
-  const handleGenerate = useCallback(async () => {
-    if (isInputRequired) {
-      setIsInputModalOpen(true);
-    } else {
-      performGeneration(assembledPrompt);
-    }
-  }, [isInputRequired, assembledPrompt, performGeneration]);
   
   const handleGenerateWithInput = useCallback(async (userInput: string) => {
     setIsInputModalOpen(false);
     const finalPrompt = assembledPrompt.replace(/### USER PROVIDED INPUT ###\s*{{USER_INPUT}}/, `### USER PROVIDED INPUT ###\n${userInput}`);
     performGeneration(finalPrompt);
   }, [assembledPrompt, performGeneration]);
+  
+  const initiateGeneration = useCallback(() => {
+    setIsValidationModalOpen(false); // Close analysis modal before generating
+    if (isInputRequired) {
+      setIsInputModalOpen(true);
+    } else {
+      performGeneration(assembledPrompt);
+    }
+  }, [isInputRequired, assembledPrompt, performGeneration]);
 
   const handleWizardComplete = (newComponents: SFLPrompt) => {
     setPromptComponents(newComponents);
@@ -180,6 +181,16 @@ BEGIN RESPONSE.
     }));
   }, []);
   
+  const handleApplySuggestion = useCallback((patch: SuggestionPatch) => {
+    setPromptComponents(prev => {
+      const newComponents = JSON.parse(JSON.stringify(prev)); // Deep copy to prevent mutation issues
+      if (newComponents[patch.component] && typeof (newComponents[patch.component] as any)[patch.field] !== 'undefined') {
+        (newComponents[patch.component] as any)[patch.field] = patch.value;
+      }
+      return newComponents;
+    });
+  }, []);
+
   if (!isApiKeyReady && (window as any).aistudio) {
     return (
       <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -230,6 +241,9 @@ BEGIN RESPONSE.
         onClose={() => setIsValidationModalOpen(false)}
         validationResult={validationResult}
         isLoading={isValidating}
+        isGenerating={isLoading}
+        onGenerate={initiateGeneration}
+        onApplySuggestion={handleApplySuggestion}
       />
       <UserInputModal
         isOpen={isInputModalOpen}
@@ -275,8 +289,6 @@ BEGIN RESPONSE.
               <GeneratedPromptView
                 prompt={assembledPrompt}
                 setPrompt={setAssembledPrompt}
-                onGenerate={handleGenerate}
-                isLoading={isLoading}
                 onOpenAnalysis={() => setIsValidationModalOpen(true)}
                 validationResult={validationResult}
                 isValidating={isValidating}
